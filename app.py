@@ -45,8 +45,32 @@ except ImportError:
     - numpy
     """)
 
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    st.error("""
+    **Pandas is not available!** 
+    
+    This is required for data manipulation. Please install:
+    - pandas
+    """)
+
+try:
+    import plotly.express as px
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    st.error("""
+    **Plotly is not available!** 
+    
+    This is required for data visualization. Please install:
+    - plotly
+    """)
+
 # Only import the logic modules if all dependencies are available
-if CV2_AVAILABLE and YOLO_AVAILABLE and NUMPY_AVAILABLE:
+if CV2_AVAILABLE and YOLO_AVAILABLE and NUMPY_AVAILABLE and PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
     try:
         from detection_logic import detect_persons
         from identification_logic import identify_persons
@@ -755,8 +779,6 @@ if os.path.exists(base_faces_dir):
     total_sessions = len(set(detected_sessions + identified_sessions))
     
     if total_detected_sessions > 0 or total_identified_sessions > 0:
-        import pandas as pd
-        import plotly.express as px
         
         # Create data for pie chart
         chart_data = pd.DataFrame({
