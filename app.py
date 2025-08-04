@@ -6,67 +6,63 @@ import hashlib
 import json
 
 # Check for required dependencies
+missing_deps = []
+
 try:
     import cv2
     CV2_AVAILABLE = True
 except ImportError:
     CV2_AVAILABLE = False
-    st.error("""
-    **OpenCV (cv2) is not available!** 
-    
-    This is required for video processing. Please ensure the following packages are installed:
-    - opencv-python-headless
-    - Required system dependencies (see packages.txt)
-    
-    If you're deploying on Streamlit Cloud, make sure your requirements.txt and packages.txt are properly configured.
-    """)
+    missing_deps.append("opencv-python-headless")
 
 try:
     from ultralytics import YOLO
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
-    st.error("""
-    **Ultralytics (YOLO) is not available!** 
-    
-    This is required for object detection. Please install:
-    - ultralytics
-    """)
+    missing_deps.append("ultralytics")
 
 try:
     import numpy as np
     NUMPY_AVAILABLE = True
 except ImportError:
     NUMPY_AVAILABLE = False
-    st.error("""
-    **NumPy is not available!** 
-    
-    This is required for numerical operations. Please install:
-    - numpy
-    """)
+    missing_deps.append("numpy")
 
 try:
     import pandas as pd
     PANDAS_AVAILABLE = True
 except ImportError:
     PANDAS_AVAILABLE = False
-    st.error("""
-    **Pandas is not available!** 
-    
-    This is required for data manipulation. Please install:
-    - pandas
-    """)
+    missing_deps.append("pandas")
 
 try:
     import plotly.express as px
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
-    st.error("""
-    **Plotly is not available!** 
+    missing_deps.append("plotly")
+
+# Display missing dependencies warning
+if missing_deps:
+    st.warning(f"""
+    **⚠️ Missing Dependencies Detected**
     
-    This is required for data visualization. Please install:
-    - plotly
+    The following packages are not available: {', '.join(missing_deps)}
+    
+    This may be due to installation issues on Streamlit Cloud. The app will run in limited mode.
+    
+    **To fix this:**
+    1. Check that your requirements.txt includes: {', '.join(missing_deps)}
+    2. Ensure packages.txt has the necessary system dependencies
+    3. Try redeploying the application
+    
+    **Current Status:**
+    - OpenCV: {'✅ Available' if CV2_AVAILABLE else '❌ Missing'}
+    - YOLO: {'✅ Available' if YOLO_AVAILABLE else '❌ Missing'}
+    - NumPy: {'✅ Available' if NUMPY_AVAILABLE else '❌ Missing'}
+    - Pandas: {'✅ Available' if PANDAS_AVAILABLE else '❌ Missing'}
+    - Plotly: {'✅ Available' if PLOTLY_AVAILABLE else '❌ Missing'}
     """)
 
 # Only import the logic modules if all dependencies are available
@@ -88,6 +84,18 @@ if CV2_AVAILABLE and YOLO_AVAILABLE and NUMPY_AVAILABLE and PANDAS_AVAILABLE and
         """)
 else:
     ALL_MODULES_AVAILABLE = False
+    # Create dummy functions for limited mode
+    def detect_persons(*args, **kwargs):
+        st.error("Video processing is not available due to missing dependencies.")
+        st.info("Please check the dependency status above and redeploy the application.")
+    
+    def identify_persons(*args, **kwargs):
+        st.error("Person identification is not available due to missing dependencies.")
+        st.info("Please check the dependency status above and redeploy the application.")
+    
+    def detect_payments(*args, **kwargs):
+        st.error("Payment detection is not available due to missing dependencies.")
+        st.info("Please check the dependency status above and redeploy the application.")
 
 # Custom CSS for modern styling
 st.set_page_config(
@@ -582,13 +590,12 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
 
         # Check if all required modules are available before processing
         if not ALL_MODULES_AVAILABLE:
-            st.error("""
-            **Cannot process video - missing dependencies!**
+            st.warning("""
+            **⚠️ Running in Limited Mode**
             
-            Please ensure all required modules are properly installed and available.
-            Check the error messages above for specific missing dependencies.
+            Some dependencies are missing, so video processing may not work properly.
+            The app will attempt to run but may show error messages for unavailable features.
             """)
-        else:
             # Decide workflow based on mode and video hash
             if st.session_state.workflow_mode == "detect_identify":
                 if video_hash in st.session_state.video_hashes.values() and existing_persons:
