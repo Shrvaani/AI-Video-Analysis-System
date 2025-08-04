@@ -786,23 +786,34 @@ if os.path.exists(base_faces_dir):
     total_sessions = len(set(detected_sessions + identified_sessions))
     
     if total_detected_sessions > 0 or total_identified_sessions > 0:
-        
-        # Create data for pie chart
-        chart_data = pd.DataFrame({
-            'Category': ['Total Sessions', 'Detection Sessions', 'Identification Sessions'],
-            'Count': [total_sessions, total_detected_sessions, total_identified_sessions]
-        })
-        
-        # Create pie chart with count labels
-        fig = px.pie(chart_data, values='Count', names='Category', 
-                    title='Total Statistics Overview',
-                    color_discrete_sequence=['#00b894', '#667eea', '#764ba2'])
-        
-        # Update the pie chart to show counts instead of percentages
-        fig.update_traces(textinfo='label+value', textposition='inside')
-        
-        # Display pie chart
-        st.plotly_chart(fig)
+        # Check if pandas and plotly are available for chart creation
+        if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
+            # Create data for pie chart
+            chart_data = pd.DataFrame({
+                'Category': ['Total Sessions', 'Detection Sessions', 'Identification Sessions'],
+                'Count': [total_sessions, total_detected_sessions, total_identified_sessions]
+            })
+            
+            # Create pie chart with count labels
+            fig = px.pie(chart_data, values='Count', names='Category', 
+                        title='Total Statistics Overview',
+                        color_discrete_sequence=['#00b894', '#667eea', '#764ba2'])
+            
+            # Update the pie chart to show counts instead of percentages
+            fig.update_traces(textinfo='label+value', textposition='inside')
+            
+            # Display pie chart
+            st.plotly_chart(fig)
+        else:
+            # Fallback: display statistics as text
+            st.markdown("### 📊 Statistics Summary")
+            stat_col1, stat_col2, stat_col3 = st.columns(3)
+            with stat_col1:
+                st.metric("Total Sessions", total_sessions)
+            with stat_col2:
+                st.metric("Detection Sessions", total_detected_sessions)
+            with stat_col3:
+                st.metric("Identification Sessions", total_identified_sessions)
     else:
         st.info("📊 No statistics available yet. Process some videos to see the overview.")
 else:
