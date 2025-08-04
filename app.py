@@ -4,9 +4,66 @@ import shutil
 import uuid
 import hashlib
 import json
-from detection_logic import detect_persons
-from identification_logic import identify_persons
-from payment_detection_logic import detect_payments
+
+# Check for required dependencies
+try:
+    import cv2
+    CV2_AVAILABLE = True
+except ImportError:
+    CV2_AVAILABLE = False
+    st.error("""
+    **OpenCV (cv2) is not available!** 
+    
+    This is required for video processing. Please ensure the following packages are installed:
+    - opencv-python-headless
+    - Required system dependencies (see packages.txt)
+    
+    If you're deploying on Streamlit Cloud, make sure your requirements.txt and packages.txt are properly configured.
+    """)
+
+try:
+    from ultralytics import YOLO
+    YOLO_AVAILABLE = True
+except ImportError:
+    YOLO_AVAILABLE = False
+    st.error("""
+    **Ultralytics (YOLO) is not available!** 
+    
+    This is required for object detection. Please install:
+    - ultralytics
+    """)
+
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    NUMPY_AVAILABLE = False
+    st.error("""
+    **NumPy is not available!** 
+    
+    This is required for numerical operations. Please install:
+    - numpy
+    """)
+
+# Only import the logic modules if all dependencies are available
+if CV2_AVAILABLE and YOLO_AVAILABLE and NUMPY_AVAILABLE:
+    try:
+        from detection_logic import detect_persons
+        from identification_logic import identify_persons
+        from payment_detection_logic import detect_payments
+        ALL_MODULES_AVAILABLE = True
+    except ImportError as e:
+        ALL_MODULES_AVAILABLE = False
+        st.error(f"""
+        **Module import error: {str(e)}**
+        
+        Please check that all required files are present:
+        - detection_logic.py
+        - identification_logic.py
+        - payment_detection_logic.py
+        """)
+else:
+    ALL_MODULES_AVAILABLE = False
 
 # Custom CSS for modern styling
 st.set_page_config(
@@ -499,46 +556,55 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 if os.path.exists(identified_path):
                     existing_persons.update([pid for pid in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, pid)) and os.path.exists(os.path.join(identified_path, pid, "first_detection.jpg"))])
 
-        # Decide workflow based on mode and video hash
-        if st.session_state.workflow_mode == "detect_identify":
-            if video_hash in st.session_state.video_hashes.values() and existing_persons:
+        # Check if all required modules are available before processing
+        if not ALL_MODULES_AVAILABLE:
+            st.error("""
+            **Cannot process video - missing dependencies!**
+            
+            Please ensure all required modules are properly installed and available.
+            Check the error messages above for specific missing dependencies.
+            """)
+        else:
+            # Decide workflow based on mode and video hash
+            if st.session_state.workflow_mode == "detect_identify":
+                if video_hash in st.session_state.video_hashes.values() and existing_persons:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
+            elif st.session_state.workflow_mode == "detect_identify_payment":
                 st.markdown(f"""
                 <div class="session-card">
-                    <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                    <h4>💰 Processing Video Session {video_session_id} (Detect, Identify & Payment)</h4>
                     <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
                     <span class="status-indicator status-active"></span>Processing...
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
-                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-            else:
-                st.markdown(f"""
-                <div class="session-card">
-                    <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
-        elif st.session_state.workflow_mode == "detect_identify_payment":
-            st.markdown(f"""
-            <div class="session-card">
-                <h4>💰 Processing Video Session {video_session_id} (Detect, Identify & Payment)</h4>
-                <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                <span class="status-indicator status-active"></span>Processing...
-            </div>
-            """, unsafe_allow_html=True)
-            st.session_state.current_video_session = video_session_id
-            if video_hash in st.session_state.video_hashes.values() and existing_persons:
-                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-            else:
-                detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
-            detect_payments(st, temp_video_path, video_session_id)
+                if video_hash in st.session_state.video_hashes.values() and existing_persons:
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
+                detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
         del st.session_state.pending_processing
