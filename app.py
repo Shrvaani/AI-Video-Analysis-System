@@ -598,7 +598,10 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             """)
             # Decide workflow based on mode and video hash
             if st.session_state.workflow_mode == "detect_identify":
-                if video_hash in st.session_state.video_hashes.values() and existing_persons:
+                # Check if we have existing data to identify against
+                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                
+                if has_existing_data:
                     st.markdown(f"""
                     <div class="session-card">
                         <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
@@ -629,7 +632,60 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
-                if video_hash in st.session_state.video_hashes.values() and existing_persons:
+                
+                # Check if we have existing data to identify against
+                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                
+                if has_existing_data:
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
+                detect_payments(st, temp_video_path, video_session_id)
+        else:
+            # All modules are available - process normally
+            # Decide workflow based on mode and video hash
+            if st.session_state.workflow_mode == "detect_identify":
+                # Check if we have existing data to identify against
+                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                
+                if has_existing_data:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
+            elif st.session_state.workflow_mode == "detect_identify_payment":
+                st.markdown(f"""
+                <div class="session-card">
+                    <h4>💰 Processing Video Session {video_session_id} (Detect, Identify & Payment)</h4>
+                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.current_video_session = video_session_id
+                
+                # Check if we have existing data to identify against
+                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                
+                if has_existing_data:
                     identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
                 else:
                     detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
