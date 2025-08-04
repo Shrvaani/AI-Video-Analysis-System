@@ -1,0 +1,121 @@
+import cv2
+import numpy as np
+import csv
+import os
+from ultralytics import YOLO
+
+# Load the two custom YOLO models
+model1 = YOLO("best.pt")  # General-purpose model
+model2 = YOLO("card_cash_hand_best.pt")  # Model trained on cash and card
+
+# Get model names and adjust CLASS_IDS dynamically from the first model
+class_names = model1.names
+CLASS_IDS = {"cash": 1, "card": 2}  # Matches YAML: cash=1, card=2
+
+# Payment detection function
+def detect_payments(st, video_path, video_session_id):
+    st.subheader(f"Payment Detection in Video Session {video_session_id}: {os.path.basename(video_path)}")
+    st.markdown("Detecting cash and card payments in the video.")
+
+    payment_type = None
+    first_cash_detected = False
+    first_card_detected = False
+    cash_payments = 0
+    card_payments = 0
+    tracked_centroids = {}  # Track centroids across frames: {centroid: (cls_id, frame_count)}
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        st.error("Error: Could not open video file.")
+        return None
+
+    stframe = st.empty()
+    progress_bar = st.progress(0)
+    frame_counter = 0
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+
+        # Run YOLO inference with both models
+        results1 = model1(frame, conf=0.3)
+        results2 = model2(frame, conf=0.3)
+
+        # Combine detections from both models
+        all_dets = results1[0].boxes.data.tolist() + results2[0].boxes.data.tolist()
+
+        # Apply non-maximum suppression (NMS) manually
+        if all_dets:
+            boxes = [[int(x1), int(y1), int(x2 - x1), int(y2 - y1)] for _, x1, y1, x2, y2, _ in all_dets]
+            scores = [float(confidence) for _, _, _, _, _, confidence in all_dets]
+            classes = [int(cls_id) for cls_id, _, _, _, _, _ in all_dets]
+            indices = cv2.dnn.NMSBoxes(boxes, scores, 0.3, 0.8)
+            if len(indices) > 0:
+                all_dets = [all_dets[i] for i in indices.flatten()]
+            else:
+                all_dets = []
+
+        for det in all_dets:
+            cls_id, x1, y1, x2, y2, confidence = map(float, det)
+            cls_id = int(cls_id)
+            x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+
+            if cls_id not in [CLASS_IDS["cash"], CLASS_IDS["card"]] or confidence < 0.3:
+                continue
+
+            center = (x1 + x2) // 2, (y1 + y2) // 2
+
+            if center in tracked_centroids:
+                prev_cls_id, frame_count = tracked_centroids[center]
+                if prev_cls_id == cls_id and frame_count > current_frame - 3:
+                    continue
+            tracked_centroids[center] = (cls_id, current_frame)
+
+            if cls_id == CLASS_IDS["cash"]:
+                if not first_cash_detected:
+                    if payment_type is None or (not first_card_detected and class_names[cls_id] == "card"):
+                        payment_type = "Cash Payment"
+                    first_cash_detected = True
+                    color = (0, 165, 255)  # Orange
+                cash_payments += 1
+            elif cls_id == CLASS_IDS["card"]:
+                if not first_card_detected:
+                    if payment_type is None or payment_type != "Cash Payment":
+                        payment_type = "Card Payment"
+                    first_card_detected = True
+                    color = (255, 0, 255)  # Purple
+                card_payments += 1
+
+            label = f"{payment_type} (Confidence: {confidence:.2f})"
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        stframe.image(frame_rgb, channels="RGB", use_container_width=True)
+
+        frame_counter += 1
+        progress_bar.progress(frame_counter / total_frames)
+
+    cap.release()
+
+    total_payments = cash_payments + card_payments
+    st.success(f"Payment Detection Completed: Total Payments = {total_payments}, Cash Payments = {cash_payments}, Card Payments = {card_payments}")
+
+    # Save summary to CSV
+    with open(f"payment_summary_{video_session_id}.csv", "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Metric", "Count"])
+        writer.writerow(["Total Payments", total_payments])
+        writer.writerow(["Cash Payments", cash_payments])
+        writer.writerow(["Card Payments", card_payments])
+
+    if payment_type:
+        st.write(f"Consolidated Report: First payment detected is {payment_type}")
+    else:
+        st.write("Consolidated Report: No cash or card payment detected in the video")
+
+    return {"total_payments": total_payments, "cash_payments": cash_payments, "card_payments": card_payments}
