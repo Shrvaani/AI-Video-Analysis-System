@@ -436,7 +436,7 @@ if 'uploaded_videos' not in st.session_state:
 if 'person_count' not in st.session_state:
     st.session_state.person_count = {}
 if 'workflow_mode' not in st.session_state:
-    st.session_state.workflow_mode = None  # Options: 'detect_identify' or 'detect_identify_payment'
+    st.session_state.workflow_mode = None  # Options: 'detect_identify', 'detect_identify_payment', or 'payment_only'
 
 # Save video_hashes to file when updated
 def save_video_hashes():
@@ -663,7 +663,7 @@ if video_file and not st.session_state.get('workflow_mode'):
     """, unsafe_allow_html=True)
     
     # Workflow Controls
-    col_workflow1, col_workflow2 = st.columns(2)
+    col_workflow1, col_workflow2, col_workflow3 = st.columns(3)
     
     with col_workflow1:
         if st.button("🔍 Detect & Identify", use_container_width=True):
@@ -692,6 +692,20 @@ if video_file and not st.session_state.get('workflow_mode'):
                 except Exception as e:
                     st.warning(f"⚠️ Failed to update session status: {e}")
             st.success("✅ Switched to Detect, Identify & Payment mode")
+
+    with col_workflow3:
+        if st.button("💳 Payment Only", use_container_width=True):
+            st.session_state.workflow_mode = "payment_only"
+            # Update session in Supabase
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
+                try:
+                    supabase_manager.update_session_status(
+                        st.session_state.pending_processing['video_session_id'], 
+                        'payment_only'
+                    )
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to update session status: {e}")
+            st.success("✅ Switched to Payment Only mode")
 
 elif video_file and st.session_state.get('workflow_mode'):
     # Show current workflow mode with option to change
@@ -959,6 +973,16 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     st.session_state.video_hashes[video_session_id] = video_hash
                     save_video_hashes()
                 detect_payments(st, temp_video_path, video_session_id)
+            elif st.session_state.workflow_mode == "payment_only":
+                st.markdown(f"""
+                <div class="session-card">
+                    <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
+                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.current_video_session = video_session_id
+                detect_payments(st, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
@@ -1007,6 +1031,16 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
                     st.session_state.video_hashes[video_session_id] = video_hash
                     save_video_hashes()
+                detect_payments(st, temp_video_path, video_session_id)
+            elif st.session_state.workflow_mode == "payment_only":
+                st.markdown(f"""
+                <div class="session-card">
+                    <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
+                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.current_video_session = video_session_id
                 detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
