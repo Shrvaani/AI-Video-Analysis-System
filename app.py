@@ -846,56 +846,88 @@ else:
 st.markdown("---")  # Add a divider
 st.markdown("### 📋 Previously Processed Sessions")
 
-if os.path.exists(base_faces_dir):
-    detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
-    identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
-    all_sessions = list(set(detected_sessions + identified_sessions))
+# Use actual uploaded videos from session state instead of file system
+uploaded_videos = st.session_state.get('uploaded_videos', [])
+if uploaded_videos:
+    st.markdown(f"**Total Sessions:** {len(uploaded_videos)}")
     
-    # Show total count near the heading
-    if all_sessions:
-        st.markdown(f"**Total Sessions:** {len(all_sessions)}")
+    # Create a 2-column, 10-row grid layout
+    for row in range(0, min(len(uploaded_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
+        col_left, col_right = st.columns(2)
         
-        # Create a 2-column, 10-row grid layout
-        for row in range(0, min(len(all_sessions), 20), 2):  # 20 sessions max (10 rows × 2 columns)
-            col_left, col_right = st.columns(2)
+        # Left column session
+        if row < len(uploaded_videos):
+            video_info = uploaded_videos[row]
+            session_id = video_info.get('session_id', 'Unknown')
+            video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
-            # Left column session
-            if row < len(all_sessions):
-                session_id = all_sessions[row]
+            # Get person counts from Supabase if available, otherwise from local files
+            detected_count = 0
+            identified_count = 0
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Get person counts from Supabase
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                except Exception as e:
+                    st.warning(f"⚠️ Could not fetch session data from cloud: {e}")
+            
+            # Fallback to local file system if Supabase is not available
+            if detected_count == 0 and identified_count == 0:
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
-                with col_left:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-            # Right column session
-            if row + 1 < len(all_sessions):
-                session_id = all_sessions[row + 1]
+            
+            with col_left:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
+                    <p><strong>📁 File:</strong> {video_name}</p>
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Right column session
+        if row + 1 < len(uploaded_videos):
+            video_info = uploaded_videos[row + 1]
+            session_id = video_info.get('session_id', 'Unknown')
+            video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
+            
+            # Get person counts from Supabase if available, otherwise from local files
+            detected_count = 0
+            identified_count = 0
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Get person counts from Supabase
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                except Exception as e:
+                    st.warning(f"⚠️ Could not fetch session data from cloud: {e}")
+            
+            # Fallback to local file system if Supabase is not available
+            if detected_count == 0 and identified_count == 0:
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
-                with col_right:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
-    else:
-        st.info("📋 No previously processed sessions found.")
+            
+            with col_right:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
+                    <p><strong>📁 File:</strong> {video_name}</p>
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
 else:
     st.info("📋 No previously processed sessions found.")
 
@@ -903,15 +935,46 @@ else:
 st.markdown("---")  # Add a divider
 st.markdown("### 📊 Total Statistics Overview")
 
-# Calculate total statistics from existing session data
-if os.path.exists(base_faces_dir):
-    detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
-    identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
+# Calculate total statistics from actual uploaded videos
+uploaded_videos = st.session_state.get('uploaded_videos', [])
+if uploaded_videos:
+    total_sessions = len(uploaded_videos)
     
-    # Count processing sessions instead of person folders (consistent with table count logic)
-    total_detected_sessions = len(detected_sessions)
-    total_identified_sessions = len(identified_sessions)
-    total_sessions = len(set(detected_sessions + identified_sessions))
+    # Count detection and identification sessions
+    total_detected_sessions = 0
+    total_identified_sessions = 0
+    
+    for video_info in uploaded_videos:
+        session_id = video_info.get('session_id')
+        if session_id:
+            # Check if this session has any detected or identified persons
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    if any(p.get('detection_type') == 'detected' for p in persons_data):
+                        total_detected_sessions += 1
+                    if any(p.get('detection_type') == 'identified' for p in persons_data):
+                        total_identified_sessions += 1
+                except Exception as e:
+                    # Fallback to local file system
+                    detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                    identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                    if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                        total_detected_sessions += 1
+                    if os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                        total_identified_sessions += 1
+            else:
+                # Use local file system
+                detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                    total_detected_sessions += 1
+                if os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                    total_identified_sessions += 1
+else:
+    total_sessions = 0
+    total_detected_sessions = 0
+    total_identified_sessions = 0
     
     if total_detected_sessions > 0 or total_identified_sessions > 0:
         # Check if pandas and plotly are available for chart creation
@@ -944,8 +1007,6 @@ if os.path.exists(base_faces_dir):
                 st.metric("Identification Sessions", total_identified_sessions)
     else:
         st.info("📊 No statistics available yet. Process some videos to see the overview.")
-else:
-    st.info("📊 No statistics available yet. Process some videos to see the overview.")
 
 with col1:
     # Session Control Panel - moved to the far right
