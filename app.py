@@ -944,7 +944,7 @@ with col1:
     # Session Control Panel - moved to the far right
     st.markdown("### Session Control")
     
-    # Session ID display - check for both current session and pending processing
+    # Session ID display - check for the actual video session ID
     current_session_id = st.session_state.get('current_video_session')
     pending_session_id = st.session_state.get('pending_processing', {}).get('video_session_id') if 'pending_processing' in st.session_state else None
     
@@ -959,8 +959,14 @@ with col1:
         active_session_id = pending_session_id
         session_status = "⏳ Pending"
     elif video_file:
-        active_session_id = "Video uploaded - select workflow mode"
-        session_status = "📤 Ready"
+        # Get the latest uploaded video session ID
+        if st.session_state.get('uploaded_videos'):
+            latest_video = st.session_state.uploaded_videos[-1]
+            active_session_id = latest_video.get('session_id', 'Unknown')
+            session_status = "📤 Ready"
+        else:
+            active_session_id = "Video uploaded - select workflow mode"
+            session_status = "📤 Ready"
     else:
         active_session_id = 'No active session'
         session_status = "⚪ Inactive"
@@ -985,7 +991,13 @@ with col1:
         st.write(f"- workflow_mode: {st.session_state.get('workflow_mode', 'None')}")
         st.write(f"- last_uploaded_video_hash: {st.session_state.get('last_uploaded_video_hash', 'None')}")
         st.write(f"- video_hashes: {list(st.session_state.get('video_hashes', {}).keys())}")
+        st.write(f"- uploaded_videos: {st.session_state.get('uploaded_videos', [])}")
         st.write(f"- All session state keys: {list(st.session_state.keys())}")
+        
+        # Show the actual video session ID being used
+        if st.session_state.get('uploaded_videos'):
+            latest_video = st.session_state.uploaded_videos[-1]
+            st.write(f"**Latest Video Session ID:** {latest_video.get('session_id', 'Unknown')}")
     
     # Clear All Data Button - full width
     if st.button("🗑️ Clear All Data", use_container_width=True, help="This will permanently delete all stored data (local and cloud)"):
