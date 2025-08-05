@@ -1037,46 +1037,36 @@ if processed_videos:
                     total_detected_sessions += 1
                 if os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
                     total_identified_sessions += 1
-    if total_detected_sessions > 0 or total_identified_sessions > 0:
-        # Check if pandas and plotly are available for chart creation
-        if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
-            # Create data for pie chart
-            chart_data = pd.DataFrame({
-                'Category': ['Total Sessions', 'Detection Sessions', 'Identification Sessions'],
-                'Count': [total_sessions, total_detected_sessions, total_identified_sessions]
-            })
-            
-            # Create pie chart with count labels
-            fig = px.pie(chart_data, values='Count', names='Category', 
-                        title='Total Statistics Overview',
-                        color_discrete_sequence=['#00b894', '#667eea', '#764ba2'])
-            
-            # Update the pie chart to show counts instead of percentages
-            fig.update_traces(textinfo='label+value', textposition='inside')
-            
-            # Display pie chart
-            st.plotly_chart(fig)
-        else:
-            # Fallback: display statistics as text
-            st.markdown("### 📊 Statistics Summary")
-            stat_col1, stat_col2, stat_col3 = st.columns(3)
-            with stat_col1:
-                st.metric("Total Sessions", total_sessions)
-            with stat_col2:
-                st.metric("Detection Sessions", total_detected_sessions)
-            with stat_col3:
-                st.metric("Identification Sessions", total_identified_sessions)
+    # Always show statistics if there are processed videos
+    # Check if pandas and plotly are available for chart creation
+    if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
+        # Create data for pie chart
+        chart_data = pd.DataFrame({
+            'Category': ['Total Sessions', 'Detection Sessions', 'Identification Sessions'],
+            'Count': [total_sessions, total_detected_sessions, total_identified_sessions]
+        })
+        
+        # Create pie chart with count labels
+        fig = px.pie(chart_data, values='Count', names='Category', 
+                    title='Total Statistics Overview',
+                    color_discrete_sequence=['#00b894', '#667eea', '#764ba2'])
+        
+        # Update the pie chart to show counts instead of percentages
+        fig.update_traces(textinfo='label+value', textposition='inside')
+        
+        # Display pie chart
+        st.plotly_chart(fig)
     else:
-        uploaded_videos = st.session_state.get('uploaded_videos', [])
-        if uploaded_videos:
-            st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
-        else:
-            st.info("📊 No statistics available yet. Process some videos to see the overview.")
+        # Fallback: display statistics as text
+        st.markdown("### 📊 Statistics Summary")
+        stat_col1, stat_col2, stat_col3 = st.columns(3)
+        with stat_col1:
+            st.metric("Total Sessions", total_sessions)
+        with stat_col2:
+            st.metric("Detection Sessions", total_detected_sessions)
+        with stat_col3:
+            st.metric("Identification Sessions", total_identified_sessions)
 else:
-    total_sessions = 0
-    total_detected_sessions = 0
-    total_identified_sessions = 0
-    
     uploaded_videos = st.session_state.get('uploaded_videos', [])
     if uploaded_videos:
         st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
