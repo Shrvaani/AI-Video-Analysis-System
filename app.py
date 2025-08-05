@@ -436,7 +436,7 @@ else:
 # Main content area with right sidebar
 col1, spacer, col2 = st.columns([1, 0.1, 1])
 
-with col2:
+with col1:
     # Main content area
     # Upload Section
     st.markdown("### Video Upload")
@@ -1074,7 +1074,7 @@ else:
         else:
             st.info("📊 No statistics available yet. Process some videos to see the overview.")
 
-with col1:
+with col2:
     # Session Control Panel - moved to the far right
     st.markdown("### Session Control")
     
