@@ -668,6 +668,7 @@ if video_file and not st.session_state.get('workflow_mode'):
     with col_workflow1:
         if st.button("🔍 Detect & Identify", use_container_width=True):
             st.session_state.workflow_mode = "detect_identify"
+            st.write(f"🔍 DEBUG: Set workflow_mode to: {st.session_state.workflow_mode}")
             # Update session in Supabase
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
                 try:
@@ -682,6 +683,7 @@ if video_file and not st.session_state.get('workflow_mode'):
     with col_workflow2:
         if st.button("💳 Payment Only", use_container_width=True):
             st.session_state.workflow_mode = "payment_only"
+            st.write(f"💳 DEBUG: Set workflow_mode to: {st.session_state.workflow_mode}")
             # Update session in Supabase
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
                 try:
@@ -913,6 +915,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             The app will attempt to run but may show error messages for unavailable features.
             """)
             # Decide workflow based on mode and video hash
+            st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
             if st.session_state.workflow_mode == "detect_identify":
                 # Check if we have existing data to identify against
                 has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
@@ -940,6 +943,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     st.session_state.video_hashes[video_session_id] = video_hash
                     save_video_hashes()
             elif st.session_state.workflow_mode == "payment_only":
+                st.write(f"💳 DEBUG: Entering payment_only mode")
                 st.markdown(f"""
                 <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
@@ -952,6 +956,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
+            st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
             if st.session_state.workflow_mode == "detect_identify":
                 # Check if we have existing data to identify against
                 has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
@@ -979,6 +984,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     st.session_state.video_hashes[video_session_id] = video_hash
                     save_video_hashes()
             elif st.session_state.workflow_mode == "payment_only":
+                st.write(f"💳 DEBUG: Entering payment_only mode (second section)")
                 st.markdown(f"""
                 <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
