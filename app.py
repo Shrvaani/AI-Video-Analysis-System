@@ -1169,16 +1169,11 @@ with col2:
     # Also check if we have a video file uploaded but not yet processed
     video_file = st.session_state.get('last_uploaded_video_hash')
     
-    # Determine the active session ID - ALWAYS use the processing session ID when processing
+    # Determine the active session ID - prioritize processing session ID
     if 'pending_processing' in st.session_state and st.session_state.get('workflow_mode'):
         # When processing, ALWAYS use the exact session ID from pending_processing
         active_session_id = st.session_state.pending_processing['video_session_id']
         session_status = "🟢 Processing"
-        
-        # Force rerun to ensure session controls are updated with the processing session ID
-        if not st.session_state.get('session_controls_updated', False):
-            st.session_state.session_controls_updated = True
-            st.rerun()
     elif current_session_id:
         active_session_id = current_session_id
         session_status = "🟢 Active"
@@ -1202,6 +1197,13 @@ with col2:
     # Show status if we have a video but no session ID displayed
     if video_file and active_session_id == 'No active session':
         st.info("🔄 Video uploaded - select workflow mode to start processing")
+    
+    # Additional check: if we have uploaded videos, show the latest session ID
+    if st.session_state.get('uploaded_videos') and active_session_id == 'No active session':
+        latest_video = st.session_state.uploaded_videos[-1]
+        if latest_video.get('session_id'):
+            active_session_id = latest_video['session_id']
+            session_status = "📤 Ready"
     
     # Add a refresh button for session control
     if st.button("🔄 Refresh Session Status", key="refresh_session"):
