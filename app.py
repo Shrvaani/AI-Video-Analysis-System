@@ -803,7 +803,6 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     st.markdown("""
     <div style="background: #f0f0f0; padding: 2rem; border-radius: 10px; text-align: center; margin: 1rem 0;">
         <h4>🎬 Video Processing Interface</h4>
-        <p>Video frame with person detection and identification would appear here</p>
         <p><strong>Mode:</strong> {}</p>
     </div>
     """.format(st.session_state.workflow_mode.replace('_', ' ').title() if st.session_state.workflow_mode else "Not Set"), unsafe_allow_html=True)
