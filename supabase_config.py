@@ -206,12 +206,24 @@ class SupabaseManager:
         if not self.is_connected():
             return None
         
-        try:
-            result = self.client.table('sessions').select('*').eq('session_id', session_id).execute()
-            return result.data[0] if result.data else None
-        except Exception as e:
-            st.error(f"Error getting session data: {e}")
-            return None
+        # Add retry logic for temporary resource unavailability
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                result = self.client.table('sessions').select('*').eq('session_id', session_id).execute()
+                return result.data[0] if result.data else None
+            except Exception as e:
+                if "Resource temporarily unavailable" in str(e) and attempt < max_retries - 1:
+                    # Wait before retrying
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+                else:
+                    st.error(f"Error getting session data: {e}")
+                    return None
 
     def get_all_sessions(self):
         """Get all sessions from database"""
@@ -230,24 +242,48 @@ class SupabaseManager:
         if not self.is_connected():
             return []
         
-        try:
-            result = self.client.table('persons').select('*').eq('session_id', session_id).execute()
-            return result.data
-        except Exception as e:
-            st.error(f"Error getting persons: {e}")
-            return []
+        # Add retry logic for temporary resource unavailability
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                result = self.client.table('persons').select('*').eq('session_id', session_id).execute()
+                return result.data
+            except Exception as e:
+                if "Resource temporarily unavailable" in str(e) and attempt < max_retries - 1:
+                    # Wait before retrying
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+                else:
+                    st.error(f"Error getting persons: {e}")
+                    return []
 
     def get_face_images_by_person(self, session_id, person_id):
         """Get all face images for a person"""
         if not self.is_connected():
             return []
         
-        try:
-            result = self.client.table('face_images').select('*').eq('session_id', session_id).eq('person_id', person_id).execute()
-            return result.data
-        except Exception as e:
-            st.error(f"Error getting face images: {e}")
-            return []
+        # Add retry logic for temporary resource unavailability
+        max_retries = 3
+        retry_delay = 1  # seconds
+        
+        for attempt in range(max_retries):
+            try:
+                result = self.client.table('face_images').select('*').eq('session_id', session_id).eq('person_id', person_id).execute()
+                return result.data
+            except Exception as e:
+                if "Resource temporarily unavailable" in str(e) and attempt < max_retries - 1:
+                    # Wait before retrying
+                    import time
+                    time.sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                    continue
+                else:
+                    st.error(f"Error getting face images: {e}")
+                    return []
 
     def get_payment_results(self, session_id):
         """Get payment results for a session"""

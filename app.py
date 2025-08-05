@@ -391,6 +391,45 @@ def calculate_video_hash_from_file(file_path):
             hasher.update(chunk)
     return hasher.hexdigest()
 
+# Helper function to safely list directory contents with retry logic
+def safe_listdir(directory_path, max_retries=3):
+    """Safely list directory contents with retry logic for resource unavailability errors"""
+    for attempt in range(max_retries):
+        try:
+            if os.path.exists(directory_path):
+                return os.listdir(directory_path)
+            else:
+                return []
+        except OSError as e:
+            if e.errno == 11 and attempt < max_retries - 1:  # Resource temporarily unavailable
+                import time
+                time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
+                continue
+            else:
+                st.warning(f"Warning: Could not access directory {directory_path}: {e}")
+                return []
+    return []
+
+# Helper function to safely check if directory exists and has contents
+def safe_directory_has_contents(directory_path, max_retries=3):
+    """Safely check if directory exists and has contents with retry logic"""
+    for attempt in range(max_retries):
+        try:
+            if os.path.exists(directory_path):
+                contents = os.listdir(directory_path)
+                return len([d for d in contents if os.path.isdir(os.path.join(directory_path, d))]) > 0
+            else:
+                return False
+        except OSError as e:
+            if e.errno == 11 and attempt < max_retries - 1:  # Resource temporarily unavailable
+                import time
+                time.sleep(0.1 * (2 ** attempt))  # Exponential backoff
+                continue
+            else:
+                st.warning(f"Warning: Could not access directory {directory_path}: {e}")
+                return False
+    return False
+
 # Setup folders and initialize session state globally
 base_faces_dir = "known_faces"
 temp_dir = "temp"
@@ -885,18 +924,32 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             # Override workflow mode to force detection if needed (but not if payment_only is selected)
             if st.session_state.get('force_detection', False) and st.session_state.get('workflow_mode') != "payment_only":
                 st.session_state.workflow_mode = "detect_identify"
-            # Check existing data with stricter validation
-            existing_detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
-            existing_identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
+            # Check existing data with stricter validation using safe file operations
+            detected_people_dir = os.path.join(base_faces_dir, "Detected people")
+            identified_people_dir = os.path.join(base_faces_dir, "Identified people")
+            
+            existing_detected_sessions = [d for d in safe_listdir(detected_people_dir) if os.path.isdir(os.path.join(detected_people_dir, d))]
+            existing_identified_sessions = [d for d in safe_listdir(identified_people_dir) if os.path.isdir(os.path.join(identified_people_dir, d))]
             existing_sessions = set(existing_detected_sessions + existing_identified_sessions)
             existing_persons = set()
+            
             for session_id in existing_sessions:
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                
                 if os.path.exists(detected_path):
-                    existing_persons.update([pid for pid in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, pid)) and os.path.exists(os.path.join(detected_path, pid, "first_detection.jpg"))])
+                    person_dirs = safe_listdir(detected_path)
+                    for pid in person_dirs:
+                        person_path = os.path.join(detected_path, pid)
+                        if os.path.isdir(person_path) and os.path.exists(os.path.join(person_path, "first_detection.jpg")):
+                            existing_persons.add(pid)
+                
                 if os.path.exists(identified_path):
-                    existing_persons.update([pid for pid in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, pid)) and os.path.exists(os.path.join(identified_path, pid, "first_detection.jpg"))])
+                    person_dirs = safe_listdir(identified_path)
+                    for pid in person_dirs:
+                        person_path = os.path.join(identified_path, pid)
+                        if os.path.isdir(person_path) and os.path.exists(os.path.join(person_path, "first_detection.jpg")):
+                            existing_persons.add(pid)
             
             # Debug: Show what we found (commented out for production)
             # st.write(f"**Debug - Existing Data Check:**")
