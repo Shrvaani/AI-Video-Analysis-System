@@ -62,20 +62,25 @@ def save_person_frame(face_img, video_session_id, person_id, frame_number, base_
     cv2.imwrite(frame_path, face_img)
     return frame_path
 
-# Helper: Count the number of sessions where a person_id appears
+# Helper: Count the number of unique sessions where a person_id appears
 def count_person_sessions(person_id, base_dir):
-    session_count = 0
+    unique_sessions = set()  # Use set to avoid duplicates
+    
+    # Check detected people sessions
     detected_sessions = [d for d in os.listdir(os.path.join(base_dir, "Detected people")) if os.path.isdir(os.path.join(base_dir, "Detected people", d))]
-    identified_sessions = [d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))]
     for session_id in detected_sessions:
         detected_path = os.path.join(base_dir, "Detected people", session_id, person_id)
         if os.path.exists(detected_path):
-            session_count += 1
+            unique_sessions.add(session_id)
+    
+    # Check identified people sessions
+    identified_sessions = [d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))]
     for session_id in identified_sessions:
         identified_path = os.path.join(base_dir, "Identified people", session_id, person_id)
         if os.path.exists(identified_path):
-            session_count += 1
-    return session_count
+            unique_sessions.add(session_id)
+    
+    return len(unique_sessions)
 
 # Main identification function
 def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, video_session_id):
@@ -178,7 +183,7 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
                             person_registry[person_id]["frame_count"] += 1
                             person_registry[person_id]["last_seen"] = frame_counter
                         # Update count based on total sessions where person appears
-                        st.session_state.person_count[person_id] = count_person_sessions(person_id, base_dir) + 1
+                        st.session_state.person_count[person_id] = count_person_sessions(person_id, base_dir)
                         save_person_frame(head_crop, video_session_id, person_id, frame_counter, base_dir, is_detected=False)
                     else:
                         continue  # Skip unmatched detections in identification mode
@@ -225,7 +230,7 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
             summary_data = []
             payment_data = detect_payments(st, video_path, video_session_id) if 'workflow_mode' in st.session_state and st.session_state.workflow_mode == "detect_identify_payment" else None
             for person_id, data in person_registry.items():
-                count = st.session_state.person_count.get(person_id, count_person_sessions(person_id, base_dir) + 1)
+                count = st.session_state.person_count.get(person_id, count_person_sessions(person_id, base_dir))
                 validated_frame_count = min(data['frame_count'], total_frames) if data['frame_count'] is not None else 0
                 person_summary = {
                     "Person ID": person_id,

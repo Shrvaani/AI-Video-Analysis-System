@@ -57,6 +57,26 @@ def box_distance(box1, box2):
 def generate_person_id():
     return f"person_{str(uuid.uuid4())[:8]}"
 
+# Helper: Count the number of unique sessions where a person_id appears
+def count_person_sessions(person_id, base_faces_dir):
+    unique_sessions = set()  # Use set to avoid duplicates
+    
+    # Check detected people sessions
+    detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
+    for session_id in detected_sessions:
+        detected_path = os.path.join(base_faces_dir, "Detected people", session_id, person_id)
+        if os.path.exists(detected_path):
+            unique_sessions.add(session_id)
+    
+    # Check identified people sessions
+    identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
+    for session_id in identified_sessions:
+        identified_path = os.path.join(base_faces_dir, "Identified people", session_id, person_id)
+        if os.path.exists(identified_path):
+            unique_sessions.add(session_id)
+    
+    return len(unique_sessions)
+
 # Helper: Get count based on number of person_id folders
 def get_person_count(person_id, video_session_id, base_faces_dir):
     video_folder = os.path.join(base_faces_dir, "Detected people", video_session_id)
@@ -238,7 +258,7 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
             summary_data = []
             payment_data = detect_payments(st, video_path, video_session_id) if 'workflow_mode' in st.session_state and st.session_state.workflow_mode == "detect_identify_payment" else None
             for person_id, data in person_registry.items():
-                count = get_person_count(person_id, video_session_id, base_faces_dir)
+                count = count_person_sessions(person_id, base_faces_dir)
                 validated_frame_count = min(data['frame_count'], total_frames) if data['frame_count'] is not None else 0
                 person_summary = {
                     "Person ID": person_id,
