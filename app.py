@@ -423,6 +423,40 @@ def save_video_hashes():
 def should_force_detection():
     return len(st.session_state.get('video_hashes', {})) == 0
 
+# Function to get processed videos
+def get_processed_videos():
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    processed_videos = []
+    
+    for video_info in uploaded_videos:
+        session_id = video_info.get('session_id')
+        if session_id:
+            # Check if this session has been processed by looking for data
+            has_processed_data = False
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Check if there's any data in Supabase for this session
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    if persons_data:
+                        has_processed_data = True
+                except Exception:
+                    pass
+            
+            # Fallback to local file system check
+            if not has_processed_data:
+                detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                    has_processed_data = True
+                elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                    has_processed_data = True
+            
+            if has_processed_data:
+                processed_videos.append(video_info)
+    
+    return processed_videos
+
 # Main Header
 st.markdown("""
 <div class="main-header">
@@ -873,37 +907,8 @@ else:
 st.markdown("---")  # Add a divider
 st.markdown("### 📋 Previously Processed Sessions")
 
-# Use actual uploaded videos from session state instead of file system
-uploaded_videos = st.session_state.get('uploaded_videos', [])
-processed_videos = []
-
-# Filter to only show videos that have actually been processed
-for video_info in uploaded_videos:
-    session_id = video_info.get('session_id')
-    if session_id:
-        # Check if this session has been processed by looking for data
-        has_processed_data = False
-        
-        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-            try:
-                # Check if there's any data in Supabase for this session
-                persons_data = supabase_manager.get_persons_by_session(session_id)
-                if persons_data:
-                    has_processed_data = True
-            except Exception:
-                pass
-        
-        # Fallback to local file system check
-        if not has_processed_data:
-            detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
-            identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-            if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
-                has_processed_data = True
-            elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
-                has_processed_data = True
-        
-        if has_processed_data:
-            processed_videos.append(video_info)
+# Use the shared function to get processed videos
+processed_videos = get_processed_videos()
 
 if processed_videos:
     st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
@@ -996,7 +1001,7 @@ st.markdown("---")  # Add a divider
 st.markdown("### 📊 Total Statistics Overview")
 
 # Calculate total statistics from the same processed videos list
-# (processed_videos is already calculated in the "Previously Processed Sessions" section)
+processed_videos = get_processed_videos()
 
 if processed_videos:
     total_sessions = len(processed_videos)
