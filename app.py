@@ -419,6 +419,10 @@ def save_video_hashes():
     with open(hash_file, 'w') as f:
         json.dump(st.session_state.video_hashes, f)
 
+# Function to check if we should force detection mode
+def should_force_detection():
+    return len(st.session_state.get('video_hashes', {})) == 0
+
 # Main Header
 st.markdown("""
 <div class="main-header">
@@ -657,6 +661,10 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     
     # Handle pending processing first
     if 'pending_processing' in st.session_state and st.session_state.get('workflow_mode'):
+        # Force detection mode if no video hashes exist (fresh start after clear)
+        if len(st.session_state.get('video_hashes', {})) == 0:
+            st.info("🔄 Fresh start detected. Forcing detection mode.")
+            st.session_state.force_detection = True
         pending = st.session_state.pending_processing
         video_session_id = pending['video_session_id']
         video_session_dir = pending['video_session_dir']
@@ -665,6 +673,17 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
 
         # Progress indicator
         with st.spinner("🔄 Initializing video processing..."):
+            # Force detection mode if no existing data
+            if len(st.session_state.video_hashes) == 0:
+                st.info("🔄 No existing data found. Starting in detection mode.")
+                st.session_state.force_detection = True
+            else:
+                st.session_state.force_detection = False
+            
+            # Override workflow mode to force detection if needed
+            if st.session_state.get('force_detection', False):
+                st.session_state.workflow_mode = "detect_identify"
+                st.info("🔄 Forcing detection mode due to no existing data.")
             # Check existing data with stricter validation
             existing_detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
             existing_identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
@@ -677,6 +696,14 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     existing_persons.update([pid for pid in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, pid)) and os.path.exists(os.path.join(detected_path, pid, "first_detection.jpg"))])
                 if os.path.exists(identified_path):
                     existing_persons.update([pid for pid in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, pid)) and os.path.exists(os.path.join(identified_path, pid, "first_detection.jpg"))])
+            
+            # Debug: Show what we found
+            st.write(f"**Debug - Existing Data Check:**")
+            st.write(f"- Existing detected sessions: {len(existing_detected_sessions)}")
+            st.write(f"- Existing identified sessions: {len(existing_identified_sessions)}")
+            st.write(f"- Existing persons: {len(existing_persons)}")
+            st.write(f"- Video hashes in session: {len(st.session_state.video_hashes)}")
+            st.write(f"- Current video hash: {video_hash}")
 
         # Check if all required modules are available before processing
         if not ALL_MODULES_AVAILABLE:
@@ -1165,5 +1192,14 @@ with col2:
         st.session_state.video_hashes = {}
         st.session_state.person_count = {}
         st.session_state.workflow_mode = None
+        st.session_state.last_uploaded_video_hash = None  # Clear this too
+        st.session_state.force_detection = True  # Force detection mode after clearing
+        
+        # Force clear the hash file as well
+        if os.path.exists(hash_file):
+            try:
+                os.remove(hash_file)
+            except:
+                pass
         
         st.rerun()
