@@ -481,16 +481,64 @@ with col2:
         video_session_dir = os.path.join(temp_dir, video_session_id)
         temp_video_path = os.path.join(video_session_dir, video_file.name)
         
-        # Only proceed with video processing if no current session is active
-        if 'current_video_session' not in st.session_state:
-            os.makedirs(video_session_dir, exist_ok=True)
+        # Create directory and save video file
+        try:
+            # Ensure temp directory exists
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir, exist_ok=True)
+                st.info(f"📁 Created temp directory: {temp_dir}")
             
-            # Save video file locally
+            # Create session directory
+            os.makedirs(video_session_dir, exist_ok=True)
+            st.info(f"📁 Created session directory: {video_session_dir}")
+            
+            # Check write permissions
+            test_file = os.path.join(video_session_dir, "test.txt")
+            try:
+                with open(test_file, "w") as f:
+                    f.write("test")
+                os.remove(test_file)
+            except Exception as e:
+                st.error(f"❌ No write permission in directory {video_session_dir}: {e}")
+                st.stop()
+                
+        except Exception as e:
+            st.error(f"❌ Failed to create directory {video_session_dir}: {e}")
+            st.stop()
+        
+        # Save video file locally
+        try:
             video_content = video_file.read()
             with open(temp_video_path, "wb") as f:
                 f.write(video_content)
-            
-                    # Save to Supabase if available (will be done after session is created)
+            st.info(f"💾 Video content read: {len(video_content)} bytes")
+        except Exception as e:
+            st.error(f"❌ Failed to read or save video file: {e}")
+            st.stop()
+        
+        # Verify the file was saved correctly
+        if not os.path.exists(temp_video_path):
+            st.error(f"❌ Failed to save video file to {temp_video_path}")
+            st.stop()
+        
+        # Check file size
+        file_size = os.path.getsize(temp_video_path)
+        if file_size == 0:
+            st.error(f"❌ Video file is empty: {temp_video_path}")
+            st.stop()
+        
+        st.success(f"✅ Video saved successfully: {temp_video_path} ({file_size} bytes)")
+        
+        # Test if video can be opened
+        import cv2
+        test_cap = cv2.VideoCapture(temp_video_path)
+        if not test_cap.isOpened():
+            st.error(f"❌ Cannot open video file: {temp_video_path}")
+            st.error("This might be due to unsupported video format or corrupted file.")
+            st.stop()
+        test_cap.release()
+        
+        # Save to Supabase if available (will be done after session is created)
         video_content_for_supabase = None
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
@@ -499,28 +547,6 @@ with col2:
                 video_content_for_supabase = video_file.read()
             except Exception as e:
                 st.warning(f"⚠️ Failed to prepare video for cloud storage: {e}")
-            
-            # Verify the file was saved correctly
-            if not os.path.exists(temp_video_path):
-                st.error(f"❌ Failed to save video file to {temp_video_path}")
-                st.stop()
-            
-            # Check file size
-            file_size = os.path.getsize(temp_video_path)
-            if file_size == 0:
-                st.error(f"❌ Video file is empty: {temp_video_path}")
-                st.stop()
-            
-            st.success(f"✅ Video saved successfully: {temp_video_path} ({file_size} bytes)")
-            
-            # Test if video can be opened
-            import cv2
-            test_cap = cv2.VideoCapture(temp_video_path)
-            if not test_cap.isOpened():
-                st.error(f"❌ Cannot open video file: {temp_video_path}")
-                st.error("This might be due to unsupported video format or corrupted file.")
-                st.stop()
-            test_cap.release()
             
         # Use the already calculated hash
         video_hash = current_video_hash
