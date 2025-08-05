@@ -6,4 +6,6 @@ pandas
 plotly
 Pillow
 scikit-learn
-scikit-image 
+scikit-image
+supabase
+python-dotenv 

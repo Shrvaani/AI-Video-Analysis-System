@@ -5,6 +5,14 @@ import uuid
 import hashlib
 import json
 
+# Import Supabase manager
+try:
+    from supabase_config import supabase_manager
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    supabase_manager = None
+
 # Check for required dependencies
 missing_deps = []
 
@@ -419,6 +427,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Supabase Status Indicator
+if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+    st.success("☁️ **Cloud Storage**: Connected to Supabase - Data will be saved to cloud")
+else:
+    st.warning("💾 **Local Storage**: Using local file system - Data will be lost on app restart")
+
 # Main content area with right sidebar
 col1, spacer, col2 = st.columns([1, 0.1, 1])
 
@@ -471,10 +485,25 @@ with col2:
         if 'current_video_session' not in st.session_state:
             os.makedirs(video_session_dir, exist_ok=True)
             
-            # Save video file
+            # Save video file locally
             video_content = video_file.read()
             with open(temp_video_path, "wb") as f:
                 f.write(video_content)
+            
+            # Save to Supabase if available
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Reset file pointer to beginning
+                    video_file.seek(0)
+                    video_content = video_file.read()
+                    
+                    # Save video to Supabase storage
+                    if supabase_manager.save_video_file(video_session_id, video_file.name, video_content):
+                        st.success("☁️ Video saved to cloud storage")
+                    else:
+                        st.warning("⚠️ Failed to save video to cloud storage, using local storage only")
+                except Exception as e:
+                    st.warning(f"⚠️ Cloud storage error: {e}. Using local storage only.")
             
             # Verify the file was saved correctly
             if not os.path.exists(temp_video_path):
@@ -505,6 +534,18 @@ with col2:
             "session_id": video_session_id,
             "hash": video_hash
         })
+        
+        # Save session data to Supabase if available
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            try:
+                supabase_manager.save_session_data(
+                    video_session_id, 
+                    video_hash, 
+                    st.session_state.get('workflow_mode', 'unknown'),
+                    video_file.name
+                )
+            except Exception as e:
+                st.warning(f"⚠️ Failed to save session data to cloud: {e}")
         
         # Store processing info for the video interface section
         st.session_state.pending_processing = {
