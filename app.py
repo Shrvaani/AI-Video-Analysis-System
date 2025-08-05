@@ -1053,13 +1053,6 @@ st.markdown("### 📊 Total Statistics Overview")
 # Calculate total statistics from the same processed videos list
 processed_videos = get_processed_videos()
 
-# Debug: Show what we found
-st.write(f"**Debug - Processed Videos Found:** {len(processed_videos)}")
-if processed_videos:
-    st.write("**Debug - Session IDs:**")
-    for video_info in processed_videos:
-        st.write(f"- {video_info.get('session_id', 'Unknown')}")
-
 if processed_videos:
     total_sessions = len(processed_videos)
     
@@ -1111,16 +1104,29 @@ if processed_videos:
             'Count': [total_detected_sessions, total_identified_sessions]
         })
         
-        # Create pie chart with count labels
-        fig = px.pie(chart_data, values='Count', names='Category', 
-                    title='Session Processing Breakdown',
-                    color_discrete_sequence=['#667eea', '#764ba2'])
+        # Only show pie chart if we have data
+        if total_detected_sessions > 0 or total_identified_sessions > 0:
+            # Create pie chart with count labels
+            fig = px.pie(chart_data, values='Count', names='Category', 
+                        title='Session Processing Breakdown',
+                        color_discrete_sequence=['#667eea', '#764ba2'])
+            
+            # Update the pie chart to show counts instead of percentages
+            fig.update_traces(textinfo='label+value', textposition='inside')
+            
+            # Display pie chart
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("📊 No processing data available yet. Process some videos to see statistics.")
         
-        # Update the pie chart to show counts instead of percentages
-        fig.update_traces(textinfo='label+value', textposition='inside')
-        
-        # Display pie chart
-        st.plotly_chart(fig)
+        # Show summary metrics
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Sessions", total_sessions)
+        with col2:
+            st.metric("Detection Sessions", total_detected_sessions)
+        with col3:
+            st.metric("Identification Sessions", total_identified_sessions)
         
         # Add debug information for session counting
         if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
@@ -1142,7 +1148,7 @@ if processed_videos:
                     except Exception as e:
                         st.write(f"  - Error getting data: {e}")
     else:
-        # Fallback: display statistics as text
+        # Fallback: display statistics as text when pandas/plotly not available
         st.markdown("### 📊 Statistics Summary")
         stat_col1, stat_col2, stat_col3 = st.columns(3)
         with stat_col1:
