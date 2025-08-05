@@ -649,9 +649,8 @@ else:
     st.info("📤 Upload a video first to select a workflow mode.")
 
 
-# Second Half - Video Processing Interface (No Columns)
+# Second Half - Video Processing (No Columns)
 st.markdown("---")  # Divider between halves
-st.markdown("### 🎥 Video Processing Interface")
 
 # Video processing interface - show when there's an active session or pending processing
 if ('current_video_session' in st.session_state and st.session_state.get('workflow_mode')) or 'pending_processing' in st.session_state:
@@ -799,13 +798,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
         st.markdown("#### 💰 Detect, Identify & Payment Mode")
         st.markdown("*Processing video with person detection, identification, and payment analysis.*")
     
-    # Video frame placeholder (this would be replaced with actual video processing)
-    st.markdown("""
-    <div style="background: #f0f0f0; padding: 2rem; border-radius: 10px; text-align: center; margin: 1rem 0;">
-        <h4>🎬 Video Processing Interface</h4>
-        <p><strong>Mode:</strong> {}</p>
-    </div>
-    """.format(st.session_state.workflow_mode.replace('_', ' ').title() if st.session_state.workflow_mode else "Not Set"), unsafe_allow_html=True)
+    # Video processing interface - actual processing happens in the logic modules
     
     # Real-time statistics - only show when video is actively being processed
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
@@ -852,13 +845,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px; text-align: center; margin: 1rem 0;">
-        <h4>🎬 Video Processing Interface</h4>
-        <p>Upload a video and select a workflow mode to start processing</p>
-        <p>The video processing interface will appear here once you begin processing</p>
-        </div>
-        """, unsafe_allow_html=True)
+    # No active processing - show minimal interface
+    pass
 
 # Third Half - Previously Processed Sessions (2 Columns, 10 Rows Grid)
 st.markdown("---")  # Add a divider
