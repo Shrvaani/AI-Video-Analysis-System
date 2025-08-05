@@ -1160,25 +1160,35 @@ with col2:
             os.remove(hash_file)
         
         # Clear Supabase data if available
+        supabase_cleared = False
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-            if supabase_manager.clear_all_data():
-                st.success("🗑️ All data cleared (local + cloud storage)!")
-            else:
-                st.warning("⚠️ Local data cleared, but cloud data clearing failed")
+            try:
+                if supabase_manager.clear_all_data():
+                    supabase_cleared = True
+                    st.success("🗑️ All data cleared (local + cloud storage)!")
+                else:
+                    st.warning("⚠️ Local data cleared, but cloud data clearing failed")
+                    st.success("🗑️ Local data cleared!")
+            except Exception as e:
+                st.error(f"❌ Error clearing cloud data: {e}")
                 st.success("🗑️ Local data cleared!")
         else:
             st.success("🗑️ All local data cleared!")
         
-        # Clear all session state
-        st.session_state.clear()
+        # Clear all session state completely
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         
-        # Reinitialize session state
+        # Reinitialize session state with clean values
         st.session_state.uploaded_videos = []
         st.session_state.video_hashes = {}
         st.session_state.person_count = {}
         st.session_state.workflow_mode = None
-        st.session_state.last_uploaded_video_hash = None  # Clear this too
+        st.session_state.last_uploaded_video_hash = None
         st.session_state.force_detection = True  # Force detection mode after clearing
+        st.session_state.current_video_session = None
+        st.session_state.pending_processing = {}
+        st.session_state.stop_processing = False
         
         # Force clear the hash file as well
         if os.path.exists(hash_file):
@@ -1186,5 +1196,8 @@ with col2:
                 os.remove(hash_file)
             except:
                 pass
+        
+        # Force reload the video hashes to ensure they're cleared
+        st.session_state.video_hashes = {}
         
         st.rerun()

@@ -302,12 +302,12 @@ class SupabaseManager:
             return False
         
         try:
-            # Clear all tables
-            self.client.table('sessions').delete().neq('id', 0).execute()
-            self.client.table('persons').delete().neq('id', 0).execute()
-            self.client.table('face_images').delete().neq('id', 0).execute()
-            self.client.table('videos').delete().neq('id', 0).execute()
-            self.client.table('payment_results').delete().neq('id', 0).execute()
+            # Clear all tables - use proper delete syntax
+            self.client.table('face_images').delete().execute()
+            self.client.table('persons').delete().execute()
+            self.client.table('videos').delete().execute()
+            self.client.table('payment_results').delete().execute()
+            self.client.table('sessions').delete().execute()
             
             # Clear storage bucket
             try:
