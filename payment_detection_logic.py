@@ -34,19 +34,6 @@ def detect_payments(st, video_path, video_session_id):
     st.subheader(f"Payment Detection in Video Session {video_session_id}: {os.path.basename(video_path)}")
     st.markdown("Detecting cash and card payments in the video.")
 
-    # Initialize stop flag if not exists
-    if 'stop_processing' not in st.session_state:
-        st.session_state.stop_processing = False
-
-    # Add stop button for payment detection
-    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_payment_{video_session_id}"):
-        st.session_state.stop_processing = True
-        # Immediately clear the session to force stop
-        del st.session_state.current_video_session
-        st.success("🛑 Video processing stopped immediately!")
-        st.rerun()
-        return None
-
     # Check if models are available
     if model1 is None and model2 is None:
         st.error("❌ Payment detection models are not available!")
@@ -78,18 +65,8 @@ def detect_payments(st, video_path, video_session_id):
     st.info(f"Processing {total_frames} frames for payment detection...")
 
     while cap.isOpened():
-        # Check if processing should be stopped - check at the beginning of each frame
-        if st.session_state.stop_processing:
-            st.warning("🛑 Payment detection stopped by user.")
-            break
-            
         ret, frame = cap.read()
         if not ret:
-            break
-
-        # Check stop flag again before heavy processing
-        if st.session_state.stop_processing:
-            st.warning("🛑 Payment detection stopped by user.")
             break
 
         current_frame = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
@@ -214,7 +191,4 @@ def detect_payments(st, video_path, video_session_id):
     else:
         st.write("**Consolidated Report:** No cash or card payment detected in the video")
 
-    # Reset stop flag when payment detection completes
-    st.session_state.stop_processing = False
-    
     return {"total_payments": total_payments, "cash_payments": cash_payments, "card_payments": card_payments}

@@ -62,65 +62,32 @@ def save_person_frame(face_img, video_session_id, person_id, frame_number, base_
     cv2.imwrite(frame_path, face_img)
     return frame_path
 
-# Helper: Count the number of unique video sessions where a person_id appears
+# Helper: Count the number of sessions where a person_id appears
 def count_person_sessions(person_id, base_dir):
-    # Try to use Supabase first if available
-    try:
-        from supabase_config import supabase_manager
-        if supabase_manager and supabase_manager.is_connected():
-            return supabase_manager.get_person_session_count(person_id)
-    except:
-        pass
-    
-    # Fallback to local file system counting
-    unique_video_hashes = set()
-    
-    # Check detected sessions
+    session_count = 0
     detected_sessions = [d for d in os.listdir(os.path.join(base_dir, "Detected people")) if os.path.isdir(os.path.join(base_dir, "Detected people", d))]
+    identified_sessions = [d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))]
     for session_id in detected_sessions:
         detected_path = os.path.join(base_dir, "Detected people", session_id, person_id)
         if os.path.exists(detected_path):
-            # Get video hash for this session from session state
-            if 'video_hashes' in st.session_state:
-                for vid_session_id, video_hash in st.session_state.video_hashes.items():
-                    if vid_session_id == session_id:
-                        unique_video_hashes.add(video_hash)
-                        break
-    
-    # Check identified sessions
-    identified_sessions = [d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))]
+            session_count += 1
     for session_id in identified_sessions:
         identified_path = os.path.join(base_dir, "Identified people", session_id, person_id)
         if os.path.exists(identified_path):
-            # Get video hash for this session from session state
-            if 'video_hashes' in st.session_state:
-                for vid_session_id, video_hash in st.session_state.video_hashes.items():
-                    if vid_session_id == session_id:
-                        unique_video_hashes.add(video_hash)
-                        break
-    
-    return len(unique_video_hashes)
+            session_count += 1
+    return session_count
 
 # Main identification function
 def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, video_session_id):
     st.subheader("Identify Mode")
     st.markdown("Identifying persons based on previously detected data.")
 
-    # Initialize stop flag if not exists
-    if 'stop_processing' not in st.session_state:
-        st.session_state.stop_processing = False
-
-    # Stop button - sets the stop flag and immediately clears session
-    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_identification_{video_session_id}"):
-        st.session_state.stop_processing = True
-        # Immediately clear the session to force stop
+    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_button_{video_session_id}"):
         del st.session_state.current_video_session
-        st.success("🛑 Video processing stopped immediately!")
-        st.rerun()
+        st.success("Video processing stopped. You can now upload a new video.")
 
     if video_path and 'current_video_session' not in st.session_state:
         st.session_state.current_video_session = video_session_id
-        st.session_state.stop_processing = False  # Reset stop flag
         st.success(f"**Video Session {video_session_id}:** Identification started!")
 
     if video_session_id == st.session_state.current_video_session:
@@ -146,29 +113,14 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
             total_detections_display = st.empty()
 
         while cap.isOpened():
-            # Check if processing should be stopped - check at the beginning of each frame
-            if st.session_state.stop_processing:
-                st.warning("🛑 Video processing stopped by user.")
-                break
-                
             ret, frame = cap.read()
             if not ret:
-                break
-
-            # Check stop flag again before heavy processing
-            if st.session_state.stop_processing:
-                st.warning("🛑 Video processing stopped by user.")
                 break
 
             results = model(frame)
             current_frame_persons.clear()
 
             for det in results[0].boxes.data:
-                # Check stop flag during detection processing
-                if st.session_state.stop_processing:
-                    st.warning("🛑 Video processing stopped by user.")
-                    break
-                    
                 cls_id = int(det[5])
                 if cls_id == 0:  # Class 0 = person
                     x1, y1, x2, y2 = map(int, det[:4])
@@ -290,9 +242,7 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
         if os.path.exists(video_session_dir):
             shutil.rmtree(video_session_dir)
         
-        # Clean up session state
         del st.session_state.current_video_session
-        st.session_state.stop_processing = False  # Reset stop flag
         st.info("The video has been identified. Upload a new video for detection or the same video again for re-identification.")
 
     if not video_path and not st.session_state.uploaded_videos:

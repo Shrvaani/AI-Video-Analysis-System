@@ -1117,6 +1117,11 @@ with col2:
         active_session_id = 'No active session'
         session_status = "⚪ Inactive"
     
+    # Force refresh if we have a video but no session ID displayed
+    if video_file and active_session_id == 'No active session':
+        st.info("🔄 Detecting session ID...")
+        st.rerun()
+    
     # Add a refresh button for session control
     if st.button("🔄 Refresh Session Status", key="refresh_session"):
         st.rerun()

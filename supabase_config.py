@@ -273,85 +273,24 @@ class SupabaseManager:
             st.error(f"Error getting payment results: {e}")
             return []
 
-    def get_person_session_count(self, person_id):
-        """Get the number of unique video sessions where a person appears"""
-        if not self.is_connected():
-            return 0
-        
-        try:
-            # Get all sessions where this person appears
-            result = self.client.table('persons').select('session_id').eq('person_id', person_id).execute()
-            
-            # Get unique video hashes for these sessions
-            unique_video_hashes = set()
-            for person_data in result.data:
-                session_id = person_data['session_id']
-                # Get video hash for this session
-                session_result = self.client.table('sessions').select('video_hash').eq('session_id', session_id).execute()
-                if session_result.data:
-                    unique_video_hashes.add(session_result.data[0]['video_hash'])
-            
-            return len(unique_video_hashes)
-        except Exception as e:
-            st.error(f"Error getting person session count: {e}")
-            return 0
-
     def clear_all_data(self):
         """Clear all data from Supabase database and storage"""
         if not self.is_connected():
             return False
         
         try:
-            # First, let's check what data exists
-            sessions_result = self.client.table('sessions').select('*').execute()
-            st.info(f"🗑️ Current sessions in DB: {len(sessions_result.data)}")
-            
-            persons_result = self.client.table('persons').select('*').execute()
-            st.info(f"🗑️ Current persons in DB: {len(persons_result.data)}")
-            
-            # Get all session IDs first
-            session_ids = [session['session_id'] for session in sessions_result.data]
-            
-            st.info(f"🗑️ Found {len(session_ids)} sessions to clear: {session_ids}")
-            
-            if not session_ids:
-                st.info("🗑️ No sessions to clear")
-                return True
-            
-            # Delete data for each session (this avoids foreign key constraint issues)
-            for session_id in session_ids:
-                st.info(f"🗑️ Clearing session: {session_id}")
-                
-                # Delete face images
-                face_result = self.client.table('face_images').delete().eq('session_id', session_id).execute()
-                st.info(f"🗑️ Deleted {len(face_result.data) if face_result.data else 0} face images")
-                
-                # Delete persons
-                person_result = self.client.table('persons').delete().eq('session_id', session_id).execute()
-                st.info(f"🗑️ Deleted {len(person_result.data) if person_result.data else 0} persons")
-                
-                # Delete videos
-                video_result = self.client.table('videos').delete().eq('session_id', session_id).execute()
-                st.info(f"🗑️ Deleted {len(video_result.data) if video_result.data else 0} videos")
-                
-                # Delete payment results
-                payment_result = self.client.table('payment_results').delete().eq('session_id', session_id).execute()
-                st.info(f"🗑️ Deleted {len(payment_result.data) if payment_result.data else 0} payment results")
-            
-            # Finally delete all sessions
-            session_delete_result = self.client.table('sessions').delete().execute()
-            st.info(f"🗑️ Deleted {len(session_delete_result.data) if session_delete_result.data else 0} sessions")
-            
-            # Verify deletion
-            verify_sessions = self.client.table('sessions').select('*').execute()
-            st.info(f"🗑️ Sessions after deletion: {len(verify_sessions.data)}")
+            # Clear all tables
+            self.client.table('sessions').delete().neq('id', 0).execute()
+            self.client.table('persons').delete().neq('id', 0).execute()
+            self.client.table('face_images').delete().neq('id', 0).execute()
+            self.client.table('videos').delete().neq('id', 0).execute()
+            self.client.table('payment_results').delete().neq('id', 0).execute()
             
             # Clear storage bucket
             try:
                 self.client.storage.from_('video-analysis').remove([])
-                st.info("🗑️ Cleared storage bucket")
-            except Exception as storage_error:
-                st.warning(f"⚠️ Storage clearing failed: {storage_error}")
+            except:
+                pass  # Ignore storage errors
             
             return True
         except Exception as e:

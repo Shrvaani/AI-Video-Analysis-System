@@ -57,11 +57,13 @@ def box_distance(box1, box2):
 def generate_person_id():
     return f"person_{str(uuid.uuid4())[:8]}"
 
-# Helper: Get count based on unique video sessions where person appears
+# Helper: Get count based on number of person_id folders
 def get_person_count(person_id, video_session_id, base_faces_dir):
-    # Use the same improved count system as identification logic
-    from identification_logic import count_person_sessions
-    return count_person_sessions(person_id, base_faces_dir)
+    video_folder = os.path.join(base_faces_dir, "Detected people", video_session_id)
+    if os.path.exists(video_folder):
+        person_folders = [d for d in os.listdir(video_folder) if os.path.isdir(os.path.join(video_folder, d))]
+        return len([pid for pid in person_folders if pid == person_id])
+    return 0
 
 # Main detection function
 def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, video_session_id):
@@ -74,21 +76,12 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
         max_frame_gap = st.slider("Max Frame Gap", 10, 100, 30, 5,
                                  help="Max frames to consider for re-identification")
 
-    # Initialize stop flag if not exists
-    if 'stop_processing' not in st.session_state:
-        st.session_state.stop_processing = False
-
-    # Stop button - sets the stop flag and immediately clears session
-    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_detection_{video_session_id}"):
-        st.session_state.stop_processing = True
-        # Immediately clear the session to force stop
+    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing"):
         del st.session_state.current_video_session
-        st.success("🛑 Video processing stopped immediately!")
-        st.rerun()
+        st.success("Video processing stopped. You can now upload a new video.")
 
     if video_path and 'current_video_session' not in st.session_state:
         st.session_state.current_video_session = video_session_id
-        st.session_state.stop_processing = False  # Reset stop flag
         st.success(f"**Video Session {video_session_id}:** Video processing started!")
 
     if 'current_video_session' in st.session_state and video_session_id == st.session_state.current_video_session:
@@ -117,34 +110,14 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
             total_detections_display = st.empty()
 
         while cap.isOpened():
-            # Check if processing should be stopped - check at the beginning of each frame
-            if st.session_state.stop_processing:
-                st.warning("🛑 Video processing stopped by user.")
-                break
-                
             ret, frame = cap.read()
             if not ret:
-                break
-
-            # Check stop flag again before heavy processing
-            if st.session_state.stop_processing:
-                st.warning("🛑 Video processing stopped by user.")
                 break
 
             results = model(frame)
             current_frame_persons.clear()
 
-            # Check stop flag before processing detections
-            if st.session_state.stop_processing:
-                st.warning("🛑 Video processing stopped by user.")
-                break
-
             for det in results[0].boxes.data:
-                # Check stop flag during detection processing
-                if st.session_state.stop_processing:
-                    st.warning("🛑 Video processing stopped by user.")
-                    break
-                    
                 cls_id = int(det[5])
                 if cls_id == 0:  # Class 0 = person
                     x1, y1, x2, y2 = map(int, det[:4])
@@ -228,11 +201,6 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
                     if os.path.exists(temp_img_path):
                         os.remove(temp_img_path)
 
-            # Check stop flag after processing all detections in this frame
-            if st.session_state.stop_processing:
-                st.warning("🛑 Video processing stopped by user.")
-                break
-
             stats_text = [
                 f"Total Unique Persons: {len(person_registry)}",
                 f"Persons in Current Frame: {len(current_frame_persons)}",
@@ -287,9 +255,7 @@ known_faces/
         if os.path.exists(video_session_dir):
             shutil.rmtree(video_session_dir)
         
-        # Clean up session state
         del st.session_state.current_video_session
-        st.session_state.stop_processing = False  # Reset stop flag
         st.info("The video has been processed. Switch to Identify mode or upload a new video.")
 
     if not video_path and not st.session_state.uploaded_videos:
