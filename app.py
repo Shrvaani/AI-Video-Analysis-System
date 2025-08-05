@@ -624,9 +624,6 @@ with col1:
             "temp_video_path": temp_video_path,
             "video_hash": video_hash
         }
-        
-        # Also set the current session ID immediately for session control display
-        st.session_state.current_video_session = video_session_id
 
 # Workflow Controls Section (Between First Part and Video Processing Interface)
 st.markdown("---")  # Add a divider
@@ -1095,9 +1092,9 @@ with col2:
         active_session_id = pending_session_id
         session_status = "⏳ Pending"
     elif st.session_state.get('current_video_session'):
-        # Use the current video session ID
+        # Use the current video session ID (set when processing starts)
         active_session_id = st.session_state.current_video_session
-        session_status = "📤 Ready"
+        session_status = "🟢 Processing"
     elif video_file and st.session_state.get('uploaded_videos'):
         # Get the latest uploaded video session ID
         latest_video = st.session_state.uploaded_videos[-1]
