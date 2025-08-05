@@ -7,6 +7,14 @@ import uuid
 import shutil
 from payment_detection_logic import detect_payments
 
+# Import Supabase manager if available
+try:
+    from supabase_config import supabase_manager
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    supabase_manager = None
+
 # Load YOLOv8 model (head detection model recommended)
 model = YOLO("yolov8n.pt")  # You can replace this with a head detection model like "yolov8n_head.pt"
 
@@ -149,6 +157,17 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
                             first_detection_path = create_person_folder_and_save_first_image(
                                 head_crop, video_session_id, person_id, base_faces_dir
                             )
+                            
+                            # Save to Supabase if available
+                            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                                try:
+                                    # Save person data
+                                    supabase_manager.save_person_data(video_session_id, person_id, "detected")
+                                    # Save first detection image
+                                    supabase_manager.save_face_image(video_session_id, person_id, head_crop, "first_detection")
+                                except Exception as e:
+                                    st.warning(f"⚠️ Failed to save person data to cloud: {e}")
+                            
                             person_registry[person_id] = {
                                 "box": current_box,
                                 "frame_count": 1,

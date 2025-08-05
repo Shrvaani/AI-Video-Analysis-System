@@ -8,6 +8,14 @@ import uuid
 import shutil
 from payment_detection_logic import detect_payments
 
+# Import Supabase manager if available
+try:
+    from supabase_config import supabase_manager
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    supabase_manager = None
+
 # Load YOLOv8 model for real-time detection in identify mode
 model = YOLO("yolov8n.pt")
 
@@ -150,6 +158,16 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
                         color = (0, 255, 0)
                         if person_id not in person_registry:
                             person_registry[person_id] = {"box": current_box, "frame_count": 1, "last_seen": frame_counter}
+                            
+                            # Save to Supabase if available (only for new identifications in this session)
+                            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                                try:
+                                    # Save person data
+                                    supabase_manager.save_person_data(video_session_id, person_id, "identified")
+                                    # Save first identification image
+                                    supabase_manager.save_face_image(video_session_id, person_id, head_crop, "first_identification")
+                                except Exception as e:
+                                    st.warning(f"⚠️ Failed to save person data to cloud: {e}")
                         else:
                             person_registry[person_id]["box"] = current_box
                             person_registry[person_id]["frame_count"] += 1
