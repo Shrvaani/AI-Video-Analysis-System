@@ -256,7 +256,7 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
         if person_registry:
             st.subheader("Person Detection Summary")
             summary_data = []
-            payment_data = detect_payments(st, video_path, video_session_id) if 'workflow_mode' in st.session_state and st.session_state.workflow_mode == "detect_identify_payment" else None
+            payment_data = detect_payments(st, video_path, video_session_id) if 'workflow_mode' in st.session_state and st.session_state.workflow_mode == "payment_only" else None
             for person_id, data in person_registry.items():
                 count = count_person_sessions(person_id, base_faces_dir)
                 validated_frame_count = min(data['frame_count'], total_frames) if data['frame_count'] is not None else 0
