@@ -557,6 +557,9 @@ with col2:
             "temp_video_path": temp_video_path,
             "video_hash": video_hash
         }
+        
+        # Also set the current session ID immediately for session control display
+        st.session_state.current_video_session = video_session_id
 
 # Workflow Controls Section (Between First Part and Video Processing Interface)
 st.markdown("---")  # Add a divider
@@ -945,16 +948,26 @@ with col1:
     current_session_id = st.session_state.get('current_video_session')
     pending_session_id = st.session_state.get('pending_processing', {}).get('video_session_id') if 'pending_processing' in st.session_state else None
     
-    # Determine the active session ID
+    # Also check if we have a video file uploaded but not yet processed
+    video_file = st.session_state.get('last_uploaded_video_hash')
+    
+    # Determine the active session ID with better logic
     if current_session_id:
         active_session_id = current_session_id
         session_status = "🟢 Active"
     elif pending_session_id:
         active_session_id = pending_session_id
         session_status = "⏳ Pending"
+    elif video_file:
+        active_session_id = "Video uploaded - select workflow mode"
+        session_status = "📤 Ready"
     else:
         active_session_id = 'No active session'
         session_status = "⚪ Inactive"
+    
+    # Add a refresh button for session control
+    if st.button("🔄 Refresh Session Status", key="refresh_session"):
+        st.rerun()
     
     st.markdown(f"""
     <div style="background: var(--card-background); padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0; border: 1px solid var(--border-color);">
@@ -963,6 +976,16 @@ with col1:
         <div style="font-size: 0.8rem; color: var(--text-color); margin-top: 0.3rem;">{session_status}</div>
     </div>
     """, unsafe_allow_html=True)
+    
+    # Debug information (can be removed later)
+    if st.checkbox("🔧 Show Debug Info", key="debug_session"):
+        st.write("**Debug Session State:**")
+        st.write(f"- current_video_session: {st.session_state.get('current_video_session', 'None')}")
+        st.write(f"- pending_processing: {st.session_state.get('pending_processing', 'None')}")
+        st.write(f"- workflow_mode: {st.session_state.get('workflow_mode', 'None')}")
+        st.write(f"- last_uploaded_video_hash: {st.session_state.get('last_uploaded_video_hash', 'None')}")
+        st.write(f"- video_hashes: {list(st.session_state.get('video_hashes', {}).keys())}")
+        st.write(f"- All session state keys: {list(st.session_state.keys())}")
     
     # Clear All Data Button - full width
     if st.button("🗑️ Clear All Data", use_container_width=True, help="This will permanently delete all stored data (local and cloud)"):
