@@ -302,29 +302,56 @@ class SupabaseManager:
             return False
         
         try:
+            # First, let's check what data exists
+            sessions_result = self.client.table('sessions').select('*').execute()
+            st.info(f"🗑️ Current sessions in DB: {len(sessions_result.data)}")
+            
+            persons_result = self.client.table('persons').select('*').execute()
+            st.info(f"🗑️ Current persons in DB: {len(persons_result.data)}")
+            
             # Get all session IDs first
-            sessions_result = self.client.table('sessions').select('session_id').execute()
             session_ids = [session['session_id'] for session in sessions_result.data]
+            
+            st.info(f"🗑️ Found {len(session_ids)} sessions to clear: {session_ids}")
+            
+            if not session_ids:
+                st.info("🗑️ No sessions to clear")
+                return True
             
             # Delete data for each session (this avoids foreign key constraint issues)
             for session_id in session_ids:
+                st.info(f"🗑️ Clearing session: {session_id}")
+                
                 # Delete face images
-                self.client.table('face_images').delete().eq('session_id', session_id).execute()
+                face_result = self.client.table('face_images').delete().eq('session_id', session_id).execute()
+                st.info(f"🗑️ Deleted {len(face_result.data) if face_result.data else 0} face images")
+                
                 # Delete persons
-                self.client.table('persons').delete().eq('session_id', session_id).execute()
+                person_result = self.client.table('persons').delete().eq('session_id', session_id).execute()
+                st.info(f"🗑️ Deleted {len(person_result.data) if person_result.data else 0} persons")
+                
                 # Delete videos
-                self.client.table('videos').delete().eq('session_id', session_id).execute()
+                video_result = self.client.table('videos').delete().eq('session_id', session_id).execute()
+                st.info(f"🗑️ Deleted {len(video_result.data) if video_result.data else 0} videos")
+                
                 # Delete payment results
-                self.client.table('payment_results').delete().eq('session_id', session_id).execute()
+                payment_result = self.client.table('payment_results').delete().eq('session_id', session_id).execute()
+                st.info(f"🗑️ Deleted {len(payment_result.data) if payment_result.data else 0} payment results")
             
             # Finally delete all sessions
-            self.client.table('sessions').delete().execute()
+            session_delete_result = self.client.table('sessions').delete().execute()
+            st.info(f"🗑️ Deleted {len(session_delete_result.data) if session_delete_result.data else 0} sessions")
+            
+            # Verify deletion
+            verify_sessions = self.client.table('sessions').select('*').execute()
+            st.info(f"🗑️ Sessions after deletion: {len(verify_sessions.data)}")
             
             # Clear storage bucket
             try:
                 self.client.storage.from_('video-analysis').remove([])
-            except:
-                pass  # Ignore storage errors
+                st.info("🗑️ Cleared storage bucket")
+            except Exception as storage_error:
+                st.warning(f"⚠️ Storage clearing failed: {storage_error}")
             
             return True
         except Exception as e:
