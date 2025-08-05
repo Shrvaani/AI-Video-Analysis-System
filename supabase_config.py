@@ -101,13 +101,28 @@ class SupabaseManager:
             return False
         
         try:
-            # Convert image data to bytes if it's a PIL Image
-            if hasattr(image_data, 'save'):
+            # Convert image data to bytes
+            img_byte_arr = None
+            
+            # Handle different image data types
+            if hasattr(image_data, 'save'):  # PIL Image
                 img_byte_arr = io.BytesIO()
                 image_data.save(img_byte_arr, format='JPEG')
                 img_byte_arr = img_byte_arr.getvalue()
-            else:
+            elif hasattr(image_data, 'tobytes'):  # NumPy array
+                # Convert BGR to RGB and encode as JPEG
+                import cv2
+                success, encoded_image = cv2.imencode('.jpg', image_data)
+                if success:
+                    img_byte_arr = encoded_image.tobytes()
+                else:
+                    st.error("Failed to encode NumPy array as JPEG")
+                    return False
+            elif isinstance(image_data, (str, bytes)):  # File path or bytes
                 img_byte_arr = image_data
+            else:
+                st.error(f"Unsupported image data type: {type(image_data)}")
+                return False
             
             # Create file path
             file_path = f"faces/{session_id}/{person_id}/{image_type}.jpg"
