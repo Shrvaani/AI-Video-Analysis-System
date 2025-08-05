@@ -4,6 +4,14 @@ import csv
 import os
 from ultralytics import YOLO
 
+# Import Supabase manager if available
+try:
+    from supabase_config import supabase_manager
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    SUPABASE_AVAILABLE = False
+    supabase_manager = None
+
 # Initialize models with error handling
 model1 = None
 model2 = None
@@ -161,6 +169,22 @@ def detect_payments(st, video_path, video_session_id):
         st.success(f"📊 Payment summary saved to {csv_filename}")
     except Exception as e:
         st.warning(f"Warning: Could not save payment summary: {e}")
+
+    # Save payment results to Supabase if available
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            payment_data = {
+                "total_payments": total_payments,
+                "cash_payments": cash_payments,
+                "card_payments": card_payments,
+                "payment_type": payment_type or "None"
+            }
+            if supabase_manager.save_payment_results(video_session_id, payment_data):
+                st.success("☁️ Payment results saved to cloud storage")
+            else:
+                st.warning("⚠️ Failed to save payment results to cloud storage")
+        except Exception as e:
+            st.warning(f"⚠️ Cloud storage error: {e}")
 
     if payment_type:
         st.write(f"**Consolidated Report:** First payment detected is {payment_type}")
