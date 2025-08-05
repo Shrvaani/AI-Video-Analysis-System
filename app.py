@@ -965,7 +965,7 @@ with col1:
     """, unsafe_allow_html=True)
     
     # Clear All Data Button - full width
-    if st.button("🗑️ Clear All Data", use_container_width=True, help="This will permanently delete all stored data"):
+    if st.button("🗑️ Clear All Data", use_container_width=True, help="This will permanently delete all stored data (local and cloud)"):
         # Clear file system data
         if os.path.exists(base_faces_dir):
             shutil.rmtree(base_faces_dir)
@@ -978,6 +978,16 @@ with col1:
         if os.path.exists(hash_file):
             os.remove(hash_file)
         
+        # Clear Supabase data if available
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            if supabase_manager.clear_all_data():
+                st.success("🗑️ All data cleared (local + cloud storage)!")
+            else:
+                st.warning("⚠️ Local data cleared, but cloud data clearing failed")
+                st.success("🗑️ Local data cleared!")
+        else:
+            st.success("🗑️ All local data cleared!")
+        
         # Clear all session state
         st.session_state.clear()
         
@@ -987,5 +997,4 @@ with col1:
         st.session_state.person_count = {}
         st.session_state.workflow_mode = None
         
-        st.success("🗑️ All data and stored faces cleared!")
         st.rerun()

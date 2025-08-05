@@ -246,5 +246,29 @@ class SupabaseManager:
             st.error(f"Error getting face images: {e}")
             return []
 
+    def clear_all_data(self):
+        """Clear all data from Supabase database and storage"""
+        if not self.is_connected():
+            return False
+        
+        try:
+            # Clear all tables
+            self.client.table('sessions').delete().neq('id', 0).execute()
+            self.client.table('persons').delete().neq('id', 0).execute()
+            self.client.table('face_images').delete().neq('id', 0).execute()
+            self.client.table('videos').delete().neq('id', 0).execute()
+            self.client.table('payment_results').delete().neq('id', 0).execute()
+            
+            # Clear storage bucket
+            try:
+                self.client.storage.from_('video-analysis').remove([])
+            except:
+                pass  # Ignore storage errors
+            
+            return True
+        except Exception as e:
+            st.error(f"Error clearing Supabase data: {e}")
+            return False
+
 # Global Supabase manager instance
 supabase_manager = SupabaseManager() 
