@@ -1091,23 +1091,22 @@ with col2:
     elif pending_session_id:
         active_session_id = pending_session_id
         session_status = "⏳ Pending"
-    elif video_file:
+    elif video_file and st.session_state.get('uploaded_videos'):
         # Get the latest uploaded video session ID
-        if st.session_state.get('uploaded_videos'):
-            latest_video = st.session_state.uploaded_videos[-1]
-            active_session_id = latest_video.get('session_id', 'Unknown')
-            session_status = "📤 Ready"
-        else:
-            active_session_id = "Video uploaded - select workflow mode"
-            session_status = "📤 Ready"
+        latest_video = st.session_state.uploaded_videos[-1]
+        active_session_id = latest_video.get('session_id', 'Unknown')
+        session_status = "📤 Ready"
+    elif video_file:
+        # Video uploaded but not yet added to uploaded_videos list
+        active_session_id = "Video uploaded - select workflow mode"
+        session_status = "📤 Ready"
     else:
         active_session_id = 'No active session'
         session_status = "⚪ Inactive"
     
-    # Force refresh if we have a video but no session ID displayed
+    # Show status if we have a video but no session ID displayed
     if video_file and active_session_id == 'No active session':
-        st.info("🔄 Detecting session ID...")
-        st.rerun()
+        st.info("🔄 Video uploaded - select workflow mode to start processing")
     
     # Add a refresh button for session control
     if st.button("🔄 Refresh Session Status", key="refresh_session"):
