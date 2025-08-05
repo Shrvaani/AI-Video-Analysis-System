@@ -1084,13 +1084,14 @@ with col2:
     # Also check if we have a video file uploaded but not yet processed
     video_file = st.session_state.get('last_uploaded_video_hash')
     
-    # Determine the active session ID with better logic
-    if current_session_id:
+    # Determine the active session ID with better logic - prioritize processing session
+    if pending_session_id and st.session_state.get('workflow_mode'):
+        # If we're processing, show the processing session ID
+        active_session_id = pending_session_id
+        session_status = "🟢 Processing"
+    elif current_session_id:
         active_session_id = current_session_id
         session_status = "🟢 Active"
-    elif pending_session_id:
-        active_session_id = pending_session_id
-        session_status = "⏳ Pending"
     elif st.session_state.get('current_video_session'):
         # Use the current video session ID (set when processing starts)
         active_session_id = st.session_state.current_video_session
