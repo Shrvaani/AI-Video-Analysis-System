@@ -408,7 +408,31 @@ if 'video_hashes' not in st.session_state:
     else:
         st.session_state.video_hashes = {}
 if 'uploaded_videos' not in st.session_state:
-    st.session_state.uploaded_videos = []
+    # Try to load existing sessions from Supabase
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            all_sessions = supabase_manager.get_all_sessions()
+            if all_sessions:
+                # Convert Supabase sessions to uploaded_videos format
+                uploaded_videos = []
+                for session in all_sessions:
+                    uploaded_videos.append({
+                        "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
+                        "session_id": session['session_id'],
+                        "hash": session['video_hash']
+                    })
+                st.session_state.uploaded_videos = uploaded_videos
+                st.info(f"📊 Loaded {len(uploaded_videos)} existing sessions from cloud storage")
+                # Also update video_hashes to include the loaded sessions
+                for session in all_sessions:
+                    st.session_state.video_hashes[session['session_id']] = session['video_hash']
+            else:
+                st.session_state.uploaded_videos = []
+        except Exception as e:
+            st.warning(f"⚠️ Failed to load existing sessions from cloud: {e}")
+            st.session_state.uploaded_videos = []
+    else:
+        st.session_state.uploaded_videos = []
 if 'person_count' not in st.session_state:
     st.session_state.person_count = {}
 if 'workflow_mode' not in st.session_state:
@@ -418,6 +442,44 @@ if 'workflow_mode' not in st.session_state:
 def save_video_hashes():
     with open(hash_file, 'w') as f:
         json.dump(st.session_state.video_hashes, f)
+
+# Function to check if we should force detection mode
+def should_force_detection():
+    return len(st.session_state.get('video_hashes', {})) == 0
+
+# Function to get processed videos
+def get_processed_videos():
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    processed_videos = []
+    
+    for video_info in uploaded_videos:
+        session_id = video_info.get('session_id')
+        if session_id:
+            # Check if this session has been processed by looking for data
+            has_processed_data = False
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Check if there's any data in Supabase for this session
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    if persons_data and len(persons_data) > 0:
+                        has_processed_data = True
+                except Exception:
+                    pass
+            
+            # Fallback to local file system check
+            if not has_processed_data:
+                detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                    has_processed_data = True
+                elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                    has_processed_data = True
+            
+            if has_processed_data:
+                processed_videos.append(video_info)
+    
+    return processed_videos
 
 # Main Header
 st.markdown("""
@@ -436,7 +498,7 @@ else:
 # Main content area with right sidebar
 col1, spacer, col2 = st.columns([1, 0.1, 1])
 
-with col2:
+with col1:
     # Main content area
     # Upload Section
     st.markdown("### Video Upload")
@@ -481,19 +543,64 @@ with col2:
         video_session_dir = os.path.join(temp_dir, video_session_id)
         temp_video_path = os.path.join(video_session_dir, video_file.name)
         
-        # Set the session ID immediately so it shows in Session Controls
-        st.session_state.current_video_session = video_session_id
-        
-        # Only proceed with video processing if no current session is active
-        if 'current_video_session' not in st.session_state:
-            os.makedirs(video_session_dir, exist_ok=True)
+        # Create directory and save video file
+        try:
+            # Ensure temp directory exists
+            if not os.path.exists(temp_dir):
+                os.makedirs(temp_dir, exist_ok=True)
+                st.info(f"📁 Created temp directory: {temp_dir}")
             
-            # Save video file locally
+            # Create session directory
+            os.makedirs(video_session_dir, exist_ok=True)
+            st.info(f"📁 Created session directory: {video_session_dir}")
+            
+            # Check write permissions
+            test_file = os.path.join(video_session_dir, "test.txt")
+            try:
+                with open(test_file, "w") as f:
+                    f.write("test")
+                os.remove(test_file)
+            except Exception as e:
+                st.error(f"❌ No write permission in directory {video_session_dir}: {e}")
+                st.stop()
+                
+        except Exception as e:
+            st.error(f"❌ Failed to create directory {video_session_dir}: {e}")
+            st.stop()
+        
+        # Save video file locally
+        try:
             video_content = video_file.read()
             with open(temp_video_path, "wb") as f:
                 f.write(video_content)
-            
-                    # Save to Supabase if available (will be done after session is created)
+            st.info(f"💾 Video content read: {len(video_content)} bytes")
+        except Exception as e:
+            st.error(f"❌ Failed to read or save video file: {e}")
+            st.stop()
+        
+        # Verify the file was saved correctly
+        if not os.path.exists(temp_video_path):
+            st.error(f"❌ Failed to save video file to {temp_video_path}")
+            st.stop()
+        
+        # Check file size
+        file_size = os.path.getsize(temp_video_path)
+        if file_size == 0:
+            st.error(f"❌ Video file is empty: {temp_video_path}")
+            st.stop()
+        
+        st.success(f"✅ Video saved successfully: {temp_video_path} ({file_size} bytes)")
+        
+        # Test if video can be opened
+        import cv2
+        test_cap = cv2.VideoCapture(temp_video_path)
+        if not test_cap.isOpened():
+            st.error(f"❌ Cannot open video file: {temp_video_path}")
+            st.error("This might be due to unsupported video format or corrupted file.")
+            st.stop()
+        test_cap.release()
+        
+        # Save to Supabase if available (will be done after session is created)
         video_content_for_supabase = None
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
@@ -503,28 +610,6 @@ with col2:
             except Exception as e:
                 st.warning(f"⚠️ Failed to prepare video for cloud storage: {e}")
             
-            # Verify the file was saved correctly
-            if not os.path.exists(temp_video_path):
-                st.error(f"❌ Failed to save video file to {temp_video_path}")
-                st.stop()
-            
-            # Check file size
-            file_size = os.path.getsize(temp_video_path)
-            if file_size == 0:
-                st.error(f"❌ Video file is empty: {temp_video_path}")
-                st.stop()
-            
-            st.success(f"✅ Video saved successfully: {temp_video_path} ({file_size} bytes)")
-            
-            # Test if video can be opened
-            import cv2
-            test_cap = cv2.VideoCapture(temp_video_path)
-            if not test_cap.isOpened():
-                st.error(f"❌ Cannot open video file: {temp_video_path}")
-                st.error("This might be due to unsupported video format or corrupted file.")
-                st.stop()
-            test_cap.release()
-            
         # Use the already calculated hash
         video_hash = current_video_hash
         st.session_state.uploaded_videos.append({
@@ -532,6 +617,9 @@ with col2:
             "session_id": video_session_id,
             "hash": video_hash
         })
+        
+        # Set the current video session immediately when video is uploaded
+        st.session_state.current_video_session = video_session_id
         
         # Save session data to Supabase if available (will be updated when workflow mode is selected)
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
@@ -623,15 +711,17 @@ else:
     st.info("📤 Upload a video first to select a workflow mode.")
 
 
-# Second Half - Video Processing Interface (No Columns)
+# Second Half - Video Processing (No Columns)
 st.markdown("---")  # Divider between halves
-st.markdown("### 🎥 Video Processing Interface")
 
 # Video processing interface - show when there's an active session or pending processing
 if ('current_video_session' in st.session_state and st.session_state.get('workflow_mode')) or 'pending_processing' in st.session_state:
     
     # Handle pending processing first
     if 'pending_processing' in st.session_state and st.session_state.get('workflow_mode'):
+        # Force detection mode if no video hashes exist (fresh start after clear)
+        if len(st.session_state.get('video_hashes', {})) == 0:
+            st.session_state.force_detection = True
         pending = st.session_state.pending_processing
         video_session_id = pending['video_session_id']
         video_session_dir = pending['video_session_dir']
@@ -640,6 +730,15 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
 
         # Progress indicator
         with st.spinner("🔄 Initializing video processing..."):
+            # Force detection mode if no existing data
+            if len(st.session_state.video_hashes) == 0:
+                st.session_state.force_detection = True
+            else:
+                st.session_state.force_detection = False
+            
+            # Override workflow mode to force detection if needed
+            if st.session_state.get('force_detection', False):
+                st.session_state.workflow_mode = "detect_identify"
             # Check existing data with stricter validation
             existing_detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
             existing_identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
@@ -652,6 +751,14 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     existing_persons.update([pid for pid in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, pid)) and os.path.exists(os.path.join(detected_path, pid, "first_detection.jpg"))])
                 if os.path.exists(identified_path):
                     existing_persons.update([pid for pid in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, pid)) and os.path.exists(os.path.join(identified_path, pid, "first_detection.jpg"))])
+            
+            # Debug: Show what we found (commented out for production)
+            # st.write(f"**Debug - Existing Data Check:**")
+            # st.write(f"- Existing detected sessions: {len(existing_detected_sessions)}")
+            # st.write(f"- Existing identified sessions: {len(existing_identified_sessions)}")
+            # st.write(f"- Existing persons: {len(existing_persons)}")
+            # st.write(f"- Video hashes in session: {len(st.session_state.video_hashes)}")
+            # st.write(f"- Current video hash: {video_hash}")
 
         # Check if all required modules are available before processing
         if not ALL_MODULES_AVAILABLE:
@@ -661,42 +768,42 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             Some dependencies are missing, so video processing may not work properly.
             The app will attempt to run but may show error messages for unavailable features.
             """)
-        # Decide workflow based on mode and video hash
-        if st.session_state.workflow_mode == "detect_identify":
+            # Decide workflow based on mode and video hash
+            if st.session_state.workflow_mode == "detect_identify":
                 # Check if we have existing data to identify against
                 has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
                 
                 if has_existing_data:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
+            elif st.session_state.workflow_mode == "detect_identify_payment":
                 st.markdown(f"""
                 <div class="session-card">
-                    <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                    <h4>💰 Processing Video Session {video_session_id} (Detect, Identify & Payment)</h4>
                     <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
                     <span class="status-indicator status-active"></span>Processing...
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
-                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-            else:
-                st.markdown(f"""
-                <div class="session-card">
-                    <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
-        elif st.session_state.workflow_mode == "detect_identify_payment":
-            st.markdown(f"""
-            <div class="session-card">
-                <h4>💰 Processing Video Session {video_session_id} (Detect, Identify & Payment)</h4>
-                <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                <span class="status-indicator status-active"></span>Processing...
-            </div>
-            """, unsafe_allow_html=True)
-            st.session_state.current_video_session = video_session_id
                 
                 # Check if we have existing data to identify against
                 has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
@@ -751,36 +858,26 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
                 
                 if has_existing_data:
-                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-            else:
-                detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
-            detect_payments(st, temp_video_path, video_session_id)
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
+                detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
         del st.session_state.pending_processing
+        # Reset session controls update flag
+        if 'session_controls_updated' in st.session_state:
+            del st.session_state.session_controls_updated
     
     # Continue with existing active session
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
         current_session_id = st.session_state.current_video_session
     
-    # Video processing header
-    if st.session_state.workflow_mode == "detect_identify":
-        st.markdown("#### 🔍 Identify Mode")
-        st.markdown("*Identifying persons based on previously detected data.*")
-    elif st.session_state.workflow_mode == "detect_identify_payment":
-        st.markdown("#### 💰 Detect, Identify & Payment Mode")
-        st.markdown("*Processing video with person detection, identification, and payment analysis.*")
+    # Video processing - workflow mode is handled in the logic modules
     
-    # Video frame placeholder (this would be replaced with actual video processing)
-    st.markdown("""
-    <div style="background: #f0f0f0; padding: 2rem; border-radius: 10px; text-align: center; margin: 1rem 0;">
-        <h4>🎬 Video Processing Interface</h4>
-        <p>Video frame with person detection and identification would appear here</p>
-        <p><strong>Mode:</strong> {}</p>
-    </div>
-    """.format(st.session_state.workflow_mode.replace('_', ' ').title() if st.session_state.workflow_mode else "Not Set"), unsafe_allow_html=True)
+    # Video processing interface - actual processing happens in the logic modules
     
     # Real-time statistics - only show when video is actively being processed
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
@@ -827,147 +924,288 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
 else:
-    st.markdown("""
-    <div style="background: #f8f9fa; padding: 2rem; border-radius: 10px; text-align: center; margin: 1rem 0;">
-        <h4>🎬 Video Processing Interface</h4>
-        <p>Upload a video and select a workflow mode to start processing</p>
-        <p>The video processing interface will appear here once you begin processing</p>
-        </div>
-        """, unsafe_allow_html=True)
+    # No active processing - show minimal interface
+    pass
 
 # Third Half - Previously Processed Sessions (2 Columns, 10 Rows Grid)
 st.markdown("---")  # Add a divider
 st.markdown("### 📋 Previously Processed Sessions")
 
-if os.path.exists(base_faces_dir):
-    detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
-    identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
-    all_sessions = list(set(detected_sessions + identified_sessions))
+# Add refresh button for session data
+col_refresh1, col_refresh2 = st.columns([1, 4])
+with col_refresh1:
+    if st.button("🔄 Refresh Session Data", help="Reload session data from cloud storage"):
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            try:
+                all_sessions = supabase_manager.get_all_sessions()
+                if all_sessions:
+                    uploaded_videos = []
+                    for session in all_sessions:
+                        uploaded_videos.append({
+                            "video_path": f"supabase_session_{session['session_id']}",
+                            "session_id": session['session_id'],
+                            "hash": session['video_hash']
+                        })
+                    st.session_state.uploaded_videos = uploaded_videos
+                    st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
+                    st.rerun()
+                else:
+                    st.info("📋 No sessions found in cloud storage")
+            except Exception as e:
+                st.error(f"❌ Failed to refresh session data: {e}")
+        else:
+            st.warning("⚠️ Cloud storage not available")
+
+# Use the shared function to get processed videos
+processed_videos = get_processed_videos()
+
+if processed_videos:
+    st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
     
-    # Show total count near the heading
-    if all_sessions:
-        st.markdown(f"**Total Sessions:** {len(all_sessions)}")
+    # Create a 2-column, 10-row grid layout
+    for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
+        col_left, col_right = st.columns(2)
         
-        # Create a 2-column, 10-row grid layout
-        for row in range(0, min(len(all_sessions), 20), 2):  # 20 sessions max (10 rows × 2 columns)
-            col_left, col_right = st.columns(2)
+        # Left column session
+        if row < len(processed_videos):
+            video_info = processed_videos[row]
+            session_id = video_info.get('session_id', 'Unknown')
+            video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
-            # Left column session
-            if row < len(all_sessions):
-                session_id = all_sessions[row]
+            # Get person counts from Supabase if available, otherwise from local files
+            detected_count = 0
+            identified_count = 0
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Get person counts from Supabase
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                except Exception as e:
+                    st.warning(f"⚠️ Could not fetch session data from cloud: {e}")
+            
+            # Fallback to local file system if Supabase is not available
+            if detected_count == 0 and identified_count == 0:
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
-                with col_left:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-            # Right column session
-            if row + 1 < len(all_sessions):
-                session_id = all_sessions[row + 1]
+            
+            with col_left:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
+                    <p><strong>📁 File:</strong> {video_name}</p>
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Right column session
+        if row + 1 < len(processed_videos):
+            video_info = processed_videos[row + 1]
+            session_id = video_info.get('session_id', 'Unknown')
+            video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
+            
+            # Get person counts from Supabase if available, otherwise from local files
+            detected_count = 0
+            identified_count = 0
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    # Get person counts from Supabase
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                except Exception as e:
+                    st.warning(f"⚠️ Could not fetch session data from cloud: {e}")
+            
+            # Fallback to local file system if Supabase is not available
+            if detected_count == 0 and identified_count == 0:
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
-                with col_right:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
+            
+            with col_right:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
+                    <p><strong>📁 File:</strong> {video_name}</p>
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
+else:
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    if uploaded_videos:
+        st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
     else:
         st.info("📋 No previously processed sessions found.")
-else:
-    st.info("📋 No previously processed sessions found.")
 
 # Fourth Half - Total Statistics Overview
 st.markdown("---")  # Add a divider
 st.markdown("### 📊 Total Statistics Overview")
 
-# Calculate total statistics from existing session data
-if os.path.exists(base_faces_dir):
-    detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
-    identified_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Identified people")) if os.path.isdir(os.path.join(base_faces_dir, "Identified people", d))]
+# Calculate total statistics from the same processed videos list
+processed_videos = get_processed_videos()
+
+# Debug: Show what we found
+st.write(f"**Debug - Processed Videos Found:** {len(processed_videos)}")
+if processed_videos:
+    st.write("**Debug - Session IDs:**")
+    for video_info in processed_videos:
+        st.write(f"- {video_info.get('session_id', 'Unknown')}")
+
+if processed_videos:
+    total_sessions = len(processed_videos)
     
-    # Count processing sessions instead of person folders (consistent with table count logic)
-    total_detected_sessions = len(detected_sessions)
-    total_identified_sessions = len(identified_sessions)
-    total_sessions = len(set(detected_sessions + identified_sessions))
+
     
-    if total_detected_sessions > 0 or total_identified_sessions > 0:
-        # Check if pandas and plotly are available for chart creation
-        if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
+    # Count detection and identification sessions
+    total_detected_sessions = 0
+    total_identified_sessions = 0
+    
+    for video_info in processed_videos:
+        session_id = video_info.get('session_id')
+        if session_id:
+            # Check if this session has any detected or identified persons
+            session_has_detected = False
+            session_has_identified = False
+            
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    if persons_data:
+                        session_has_detected = any(p.get('detection_type') == 'detected' for p in persons_data)
+                        session_has_identified = any(p.get('detection_type') == 'identified' for p in persons_data)
+                except Exception as e:
+                    # Fallback to local file system
+                    detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                    identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                    session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
+                    session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
+            else:
+                # Use local file system
+                detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
+                session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
+            
+            # Categorize the session based on what type of processing was done
+            if session_has_identified:
+                # If session has identified persons, it's an identification session
+                total_identified_sessions += 1
+            elif session_has_detected:
+                # If session only has detected persons (no identified), it's a detection session
+                total_detected_sessions += 1
+    # Always show statistics if there are processed videos
+    # Check if pandas and plotly are available for chart creation
+    if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
         # Create data for pie chart
         chart_data = pd.DataFrame({
-            'Category': ['Total Sessions', 'Detection Sessions', 'Identification Sessions'],
-            'Count': [total_sessions, total_detected_sessions, total_identified_sessions]
+            'Category': ['Detection Sessions', 'Identification Sessions'],
+            'Count': [total_detected_sessions, total_identified_sessions]
         })
         
         # Create pie chart with count labels
         fig = px.pie(chart_data, values='Count', names='Category', 
-                    title='Total Statistics Overview',
-                    color_discrete_sequence=['#00b894', '#667eea', '#764ba2'])
+                    title='Session Processing Breakdown',
+                    color_discrete_sequence=['#667eea', '#764ba2'])
         
         # Update the pie chart to show counts instead of percentages
         fig.update_traces(textinfo='label+value', textposition='inside')
         
         # Display pie chart
         st.plotly_chart(fig)
-        else:
-            # Fallback: display statistics as text
-            st.markdown("### 📊 Statistics Summary")
-            stat_col1, stat_col2, stat_col3 = st.columns(3)
-            with stat_col1:
-                st.metric("Total Sessions", total_sessions)
-            with stat_col2:
-                st.metric("Detection Sessions", total_detected_sessions)
-            with stat_col3:
-                st.metric("Identification Sessions", total_identified_sessions)
+        
+        # Add debug information for session counting
+        if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
+            st.write("**Session Count Debug Info:**")
+            st.write(f"- Total processed sessions: {total_sessions}")
+            st.write(f"- Detection sessions: {total_detected_sessions}")
+            st.write(f"- Identification sessions: {total_identified_sessions}")
+            st.write("**Individual Session Details:**")
+            for i, video_info in enumerate(processed_videos):
+                session_id = video_info.get('session_id')
+                st.write(f"Session {i+1}: {session_id}")
+                if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                    try:
+                        persons_data = supabase_manager.get_persons_by_session(session_id)
+                        detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                        identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                        st.write(f"  - Detected persons: {detected_count}")
+                        st.write(f"  - Identified persons: {identified_count}")
+                    except Exception as e:
+                        st.write(f"  - Error getting data: {e}")
+    else:
+        # Fallback: display statistics as text
+        st.markdown("### 📊 Statistics Summary")
+        stat_col1, stat_col2, stat_col3 = st.columns(3)
+        with stat_col1:
+            st.metric("Total Sessions", total_sessions)
+        with stat_col2:
+            st.metric("Detection Sessions", total_detected_sessions)
+        with stat_col3:
+            st.metric("Identification Sessions", total_identified_sessions)
+else:
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    if uploaded_videos:
+        st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
     else:
         st.info("📊 No statistics available yet. Process some videos to see the overview.")
-else:
-    st.info("📊 No statistics available yet. Process some videos to see the overview.")
 
-with col1:
+with col2:
     # Session Control Panel - moved to the far right
     st.markdown("### Session Control")
     
-    # Session ID display - check for both current session and pending processing
+    # Session ID display - check for the actual video session ID
     current_session_id = st.session_state.get('current_video_session')
     pending_session_id = st.session_state.get('pending_processing', {}).get('video_session_id') if 'pending_processing' in st.session_state else None
     
     # Also check if we have a video file uploaded but not yet processed
     video_file = st.session_state.get('last_uploaded_video_hash')
     
-    # Determine the active session ID with better logic
-    if current_session_id:
+    # Determine the active session ID - ALWAYS use the processing session ID when processing
+    if 'pending_processing' in st.session_state and st.session_state.get('workflow_mode'):
+        # When processing, ALWAYS use the exact session ID from pending_processing
+        active_session_id = st.session_state.pending_processing['video_session_id']
+        session_status = "🟢 Processing"
+        
+        # Force rerun to ensure session controls are updated with the processing session ID
+        if not st.session_state.get('session_controls_updated', False):
+            st.session_state.session_controls_updated = True
+            st.rerun()
+    elif current_session_id:
         active_session_id = current_session_id
         session_status = "🟢 Active"
-    elif pending_session_id:
-        active_session_id = pending_session_id
-        session_status = "⏳ Pending"
-    elif video_file and st.session_state.get('workflow_mode'):
-        # Video uploaded and workflow mode selected, but processing not started yet
-        active_session_id = "Processing starting..."
-        session_status = "🔄 Starting"
+    elif st.session_state.get('current_video_session'):
+        # Use the current video session ID (set when processing starts)
+        active_session_id = st.session_state.current_video_session
+        session_status = "🟢 Processing"
+    elif video_file and st.session_state.get('uploaded_videos'):
+        # Get the latest uploaded video session ID
+        latest_video = st.session_state.uploaded_videos[-1]
+        active_session_id = latest_video.get('session_id', 'Unknown')
+        session_status = "📤 Ready"
     elif video_file:
+        # Video uploaded but not yet added to uploaded_videos list
         active_session_id = "Video uploaded - select workflow mode"
         session_status = "📤 Ready"
     else:
         active_session_id = 'No active session'
         session_status = "⚪ Inactive"
+    
+    # Show status if we have a video but no session ID displayed
+    if video_file and active_session_id == 'No active session':
+        st.info("🔄 Video uploaded - select workflow mode to start processing")
+    
+    # Add a refresh button for session control
+    if st.button("🔄 Refresh Session Status", key="refresh_session"):
+        st.rerun()
     
     st.markdown(f"""
     <div style="background: var(--card-background); padding: 0.75rem; border-radius: 8px; margin: 0.5rem 0; border: 1px solid var(--border-color);">
@@ -985,6 +1223,23 @@ with col1:
         st.write(f"- workflow_mode: {st.session_state.get('workflow_mode', 'None')}")
         st.write(f"- last_uploaded_video_hash: {st.session_state.get('last_uploaded_video_hash', 'None')}")
         st.write(f"- video_hashes: {list(st.session_state.get('video_hashes', {}).keys())}")
+        st.write(f"- uploaded_videos: {st.session_state.get('uploaded_videos', [])}")
+        st.write(f"- All session state keys: {list(st.session_state.keys())}")
+        
+        # Show the actual video session ID being used
+        if st.session_state.get('uploaded_videos'):
+            latest_video = st.session_state.uploaded_videos[-1]
+            st.write(f"**Latest Video Session ID:** {latest_video.get('session_id', 'Unknown')}")
+        
+        # Show what session ID the session controls are using
+        st.write(f"**Session Controls Active Session ID:** {active_session_id}")
+        st.write(f"**Session Controls Status:** {session_status}")
+        
+        # Show what session ID video processing is using
+        if 'pending_processing' in st.session_state:
+            st.write(f"**Video Processing Session ID:** {st.session_state.pending_processing.get('video_session_id', 'None')}")
+        else:
+            st.write("**Video Processing Session ID:** No pending processing")
     
     # Clear All Data Button - full width
     if st.button("🗑️ Clear All Data", use_container_width=True, help="This will permanently delete all stored data (local and cloud)"):
@@ -1001,22 +1256,45 @@ with col1:
             os.remove(hash_file)
         
         # Clear Supabase data if available
+        supabase_cleared = False
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-            if supabase_manager.clear_all_data():
-                st.success("🗑️ All data cleared (local + cloud storage)!")
-            else:
-                st.warning("⚠️ Local data cleared, but cloud data clearing failed")
+            try:
+                st.info("🗑️ Clearing cloud data...")
+                if supabase_manager.clear_all_data():
+                    supabase_cleared = True
+                    st.success("🗑️ All data cleared (local + cloud storage)!")
+                else:
+                    st.warning("⚠️ Local data cleared, but cloud data clearing failed")
+                    st.success("🗑️ Local data cleared!")
+            except Exception as e:
+                st.error(f"❌ Error clearing cloud data: {e}")
                 st.success("🗑️ Local data cleared!")
         else:
             st.success("🗑️ All local data cleared!")
         
-        # Clear all session state
-        st.session_state.clear()
+        # Clear all session state completely
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         
-        # Reinitialize session state
+        # Reinitialize session state with clean values
         st.session_state.uploaded_videos = []
         st.session_state.video_hashes = {}
         st.session_state.person_count = {}
         st.session_state.workflow_mode = None
+        st.session_state.last_uploaded_video_hash = None
+        st.session_state.force_detection = True  # Force detection mode after clearing
+        st.session_state.current_video_session = None
+        st.session_state.pending_processing = {}
+        st.session_state.stop_processing = False
+        
+        # Force clear the hash file as well
+        if os.path.exists(hash_file):
+            try:
+                os.remove(hash_file)
+            except:
+                pass
+        
+        # Force reload the video hashes to ensure they're cleared
+        st.session_state.video_hashes = {}
         
         st.rerun()
