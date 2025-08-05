@@ -1183,7 +1183,7 @@ else:
         st.info("📊 No statistics available yet. Process some videos to see the overview.")
 
 with col2:
-    # Session Control Panel - moved to the far right
+    # Session Control Panel - positioned near video upload
     st.markdown("### Session Control")
     
     # Session ID display - check for the actual video session ID
