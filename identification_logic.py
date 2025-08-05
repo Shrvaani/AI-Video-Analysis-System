@@ -62,20 +62,44 @@ def save_person_frame(face_img, video_session_id, person_id, frame_number, base_
     cv2.imwrite(frame_path, face_img)
     return frame_path
 
-# Helper: Count the number of sessions where a person_id appears
+# Helper: Count the number of unique video sessions where a person_id appears
 def count_person_sessions(person_id, base_dir):
-    session_count = 0
+    # Try to use Supabase first if available
+    try:
+        from supabase_config import supabase_manager
+        if supabase_manager and supabase_manager.is_connected():
+            return supabase_manager.get_person_session_count(person_id)
+    except:
+        pass
+    
+    # Fallback to local file system counting
+    unique_video_hashes = set()
+    
+    # Check detected sessions
     detected_sessions = [d for d in os.listdir(os.path.join(base_dir, "Detected people")) if os.path.isdir(os.path.join(base_dir, "Detected people", d))]
-    identified_sessions = [d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))]
     for session_id in detected_sessions:
         detected_path = os.path.join(base_dir, "Detected people", session_id, person_id)
         if os.path.exists(detected_path):
-            session_count += 1
+            # Get video hash for this session from session state
+            if 'video_hashes' in st.session_state:
+                for vid_session_id, video_hash in st.session_state.video_hashes.items():
+                    if vid_session_id == session_id:
+                        unique_video_hashes.add(video_hash)
+                        break
+    
+    # Check identified sessions
+    identified_sessions = [d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))]
     for session_id in identified_sessions:
         identified_path = os.path.join(base_dir, "Identified people", session_id, person_id)
         if os.path.exists(identified_path):
-            session_count += 1
-    return session_count
+            # Get video hash for this session from session state
+            if 'video_hashes' in st.session_state:
+                for vid_session_id, video_hash in st.session_state.video_hashes.items():
+                    if vid_session_id == session_id:
+                        unique_video_hashes.add(video_hash)
+                        break
+    
+    return len(unique_video_hashes)
 
 # Main identification function
 def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, video_session_id):

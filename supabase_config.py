@@ -273,6 +273,29 @@ class SupabaseManager:
             st.error(f"Error getting payment results: {e}")
             return []
 
+    def get_person_session_count(self, person_id):
+        """Get the number of unique video sessions where a person appears"""
+        if not self.is_connected():
+            return 0
+        
+        try:
+            # Get all sessions where this person appears
+            result = self.client.table('persons').select('session_id').eq('person_id', person_id).execute()
+            
+            # Get unique video hashes for these sessions
+            unique_video_hashes = set()
+            for person_data in result.data:
+                session_id = person_data['session_id']
+                # Get video hash for this session
+                session_result = self.client.table('sessions').select('video_hash').eq('session_id', session_id).execute()
+                if session_result.data:
+                    unique_video_hashes.add(session_result.data[0]['video_hash'])
+            
+            return len(unique_video_hashes)
+        except Exception as e:
+            st.error(f"Error getting person session count: {e}")
+            return 0
+
     def clear_all_data(self):
         """Clear all data from Supabase database and storage"""
         if not self.is_connected():

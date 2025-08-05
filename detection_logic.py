@@ -57,13 +57,11 @@ def box_distance(box1, box2):
 def generate_person_id():
     return f"person_{str(uuid.uuid4())[:8]}"
 
-# Helper: Get count based on number of person_id folders
+# Helper: Get count based on unique video sessions where person appears
 def get_person_count(person_id, video_session_id, base_faces_dir):
-    video_folder = os.path.join(base_faces_dir, "Detected people", video_session_id)
-    if os.path.exists(video_folder):
-        person_folders = [d for d in os.listdir(video_folder) if os.path.isdir(os.path.join(video_folder, d))]
-        return len([pid for pid in person_folders if pid == person_id])
-    return 0
+    # Use the same improved count system as identification logic
+    from identification_logic import count_person_sessions
+    return count_person_sessions(person_id, base_faces_dir)
 
 # Main detection function
 def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, video_session_id):
