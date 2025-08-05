@@ -1061,11 +1061,6 @@ if processed_videos:
                     total_detected_sessions += 1
                 if os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
                     total_identified_sessions += 1
-else:
-    total_sessions = 0
-    total_detected_sessions = 0
-    total_identified_sessions = 0
-
     if total_detected_sessions > 0 or total_identified_sessions > 0:
         # Check if pandas and plotly are available for chart creation
         if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
@@ -1100,6 +1095,15 @@ else:
             st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
         else:
             st.info("📊 No statistics available yet. Process some videos to see the overview.")
+else:
+    total_sessions = 0
+    total_detected_sessions = 0
+    total_identified_sessions = 0
+    
+    if uploaded_videos:
+        st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
+    else:
+        st.info("📊 No statistics available yet. Process some videos to see the overview.")
 
 with col2:
     # Session Control Panel - moved to the far right
