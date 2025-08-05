@@ -1098,14 +1098,22 @@ if processed_videos:
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
-        # Create data for pie chart
-        chart_data = pd.DataFrame({
-            'Category': ['Detection Sessions', 'Identification Sessions'],
-            'Count': [total_detected_sessions, total_identified_sessions]
-        })
+        # Create data for pie chart - ensure we have valid data
+        if total_detected_sessions == 0 and total_identified_sessions == 0:
+            # If no specific data, show a simple breakdown
+            chart_data = pd.DataFrame({
+                'Category': ['Processed Sessions'],
+                'Count': [total_sessions]
+            })
+        else:
+            # Normal case with detection/identification data
+            chart_data = pd.DataFrame({
+                'Category': ['Detection Sessions', 'Identification Sessions'],
+                'Count': [total_detected_sessions, total_identified_sessions]
+            })
         
-        # Only show pie chart if we have data
-        if total_detected_sessions > 0 or total_identified_sessions > 0:
+        # Always show pie chart if we have processed videos
+        if total_sessions > 0:
             # Create pie chart with count labels
             fig = px.pie(chart_data, values='Count', names='Category', 
                         title='Session Processing Breakdown',
@@ -1127,6 +1135,16 @@ if processed_videos:
             st.metric("Detection Sessions", total_detected_sessions)
         with col3:
             st.metric("Identification Sessions", total_identified_sessions)
+        
+        # Temporary debug info to help troubleshoot
+        if st.checkbox("🔍 Show Data Debug", key="temp_debug"):
+            st.write("**Data Debug Info:**")
+            st.write(f"- Total sessions: {total_sessions}")
+            st.write(f"- Detection sessions: {total_detected_sessions}")
+            st.write(f"- Identification sessions: {total_identified_sessions}")
+            st.write(f"- Chart data: {chart_data.to_dict('records')}")
+            st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
+            st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
         
         # Add debug information for session counting
         if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
