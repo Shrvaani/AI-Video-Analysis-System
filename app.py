@@ -843,6 +843,9 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
 
         # Clear pending processing
         del st.session_state.pending_processing
+        # Reset session controls update flag
+        if 'session_controls_updated' in st.session_state:
+            del st.session_state.session_controls_updated
     
     # Continue with existing active session
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
@@ -1089,6 +1092,11 @@ with col2:
         # When processing, ALWAYS use the exact session ID from pending_processing
         active_session_id = st.session_state.pending_processing['video_session_id']
         session_status = "🟢 Processing"
+        
+        # Force rerun to ensure session controls are updated with the processing session ID
+        if not st.session_state.get('session_controls_updated', False):
+            st.session_state.session_controls_updated = True
+            st.rerun()
     elif current_session_id:
         active_session_id = current_session_id
         session_status = "🟢 Active"
@@ -1140,6 +1148,16 @@ with col2:
         if st.session_state.get('uploaded_videos'):
             latest_video = st.session_state.uploaded_videos[-1]
             st.write(f"**Latest Video Session ID:** {latest_video.get('session_id', 'Unknown')}")
+        
+        # Show what session ID the session controls are using
+        st.write(f"**Session Controls Active Session ID:** {active_session_id}")
+        st.write(f"**Session Controls Status:** {session_status}")
+        
+        # Show what session ID video processing is using
+        if 'pending_processing' in st.session_state:
+            st.write(f"**Video Processing Session ID:** {st.session_state.pending_processing.get('video_session_id', 'None')}")
+        else:
+            st.write("**Video Processing Session ID:** No pending processing")
     
     # Clear All Data Button - full width
     if st.button("🗑️ Clear All Data", use_container_width=True, help="This will permanently delete all stored data (local and cloud)"):
