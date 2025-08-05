@@ -64,6 +64,15 @@ def detect_payments(st, video_path, video_session_id):
 
     st.info(f"Processing {total_frames} frames for payment detection...")
 
+    # Add real-time metrics display
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        cash_display = st.empty()
+    with col2:
+        card_display = st.empty()
+    with col3:
+        total_display = st.empty()
+
     while cap.isOpened():
         if st.session_state.get('stop_processing'):
             break
@@ -148,6 +157,11 @@ def detect_payments(st, video_path, video_session_id):
             try:
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 stframe.image(frame_rgb, channels="RGB", use_container_width=True)
+                
+                # Update real-time metrics
+                cash_display.metric("Cash Payments", cash_payments)
+                card_display.metric("Card Payments", card_payments)
+                total_display.metric("Total Payments", cash_payments + card_payments)
             except Exception as e:
                 st.warning(f"Warning: Error displaying frame {current_frame}: {e}")
 
@@ -199,5 +213,9 @@ def detect_payments(st, video_path, video_session_id):
         st.write(f"**Consolidated Report:** First payment detected is {payment_type}")
     else:
         st.write("**Consolidated Report:** No cash or card payment detected in the video")
+
+    # Clear the current video session to signal completion
+    if 'current_video_session' in st.session_state:
+        del st.session_state.current_video_session
 
     return {"total_payments": total_payments, "cash_payments": cash_payments, "card_payments": card_payments}
