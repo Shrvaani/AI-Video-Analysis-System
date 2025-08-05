@@ -1069,6 +1069,7 @@ if processed_videos:
             with stat_col3:
                 st.metric("Identification Sessions", total_identified_sessions)
     else:
+        uploaded_videos = st.session_state.get('uploaded_videos', [])
         if uploaded_videos:
             st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
         else:
@@ -1078,6 +1079,7 @@ else:
     total_detected_sessions = 0
     total_identified_sessions = 0
     
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
     if uploaded_videos:
         st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
     else:
