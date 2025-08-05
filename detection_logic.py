@@ -78,10 +78,13 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
     if 'stop_processing' not in st.session_state:
         st.session_state.stop_processing = False
 
-    # Stop button - sets the stop flag
+    # Stop button - sets the stop flag and immediately clears session
     if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_detection_{video_session_id}"):
         st.session_state.stop_processing = True
-        st.success("🛑 Stop signal sent. Processing will stop after current frame.")
+        # Immediately clear the session to force stop
+        del st.session_state.current_video_session
+        st.success("🛑 Video processing stopped immediately!")
+        st.rerun()
 
     if video_path and 'current_video_session' not in st.session_state:
         st.session_state.current_video_session = video_session_id
@@ -114,7 +117,7 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
             total_detections_display = st.empty()
 
         while cap.isOpened():
-            # Check if processing should be stopped
+            # Check if processing should be stopped - check at the beginning of each frame
             if st.session_state.stop_processing:
                 st.warning("🛑 Video processing stopped by user.")
                 break
@@ -123,10 +126,25 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
             if not ret:
                 break
 
+            # Check stop flag again before heavy processing
+            if st.session_state.stop_processing:
+                st.warning("🛑 Video processing stopped by user.")
+                break
+
             results = model(frame)
             current_frame_persons.clear()
 
+            # Check stop flag before processing detections
+            if st.session_state.stop_processing:
+                st.warning("🛑 Video processing stopped by user.")
+                break
+
             for det in results[0].boxes.data:
+                # Check stop flag during detection processing
+                if st.session_state.stop_processing:
+                    st.warning("🛑 Video processing stopped by user.")
+                    break
+                    
                 cls_id = int(det[5])
                 if cls_id == 0:  # Class 0 = person
                     x1, y1, x2, y2 = map(int, det[:4])
@@ -209,6 +227,11 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
 
                     if os.path.exists(temp_img_path):
                         os.remove(temp_img_path)
+
+            # Check stop flag after processing all detections in this frame
+            if st.session_state.stop_processing:
+                st.warning("🛑 Video processing stopped by user.")
+                break
 
             stats_text = [
                 f"Total Unique Persons: {len(person_registry)}",
