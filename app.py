@@ -594,6 +594,9 @@ with col1:
             "hash": video_hash
         })
         
+        # Set the current video session immediately when video is uploaded
+        st.session_state.current_video_session = video_session_id
+        
         # Save session data to Supabase if available (will be updated when workflow mode is selected)
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
@@ -1091,6 +1094,10 @@ with col2:
     elif pending_session_id:
         active_session_id = pending_session_id
         session_status = "⏳ Pending"
+    elif st.session_state.get('current_video_session'):
+        # Use the current video session ID
+        active_session_id = st.session_state.current_video_session
+        session_status = "📤 Ready"
     elif video_file and st.session_state.get('uploaded_videos'):
         # Get the latest uploaded video session ID
         latest_video = st.session_state.uploaded_videos[-1]
