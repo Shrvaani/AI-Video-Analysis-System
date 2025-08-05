@@ -991,6 +991,7 @@ if processed_videos:
                 </div>
                 """, unsafe_allow_html=True)
 else:
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
     if uploaded_videos:
         st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
     else:
