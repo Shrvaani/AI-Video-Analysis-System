@@ -83,8 +83,10 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
     st.markdown("Identifying persons based on previously detected data.")
 
     if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_button_{video_session_id}"):
-        del st.session_state.current_video_session
-        st.success("Video processing stopped. You can now upload a new video.")
+        st.session_state.stop_processing = True
+        st.session_state.current_video_session = None
+        st.success("🛑 Video processing stopped. You can now upload a new video.")
+        st.rerun()
 
     if video_path and 'current_video_session' not in st.session_state:
         st.session_state.current_video_session = video_session_id
@@ -113,6 +115,9 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
             total_detections_display = st.empty()
 
         while cap.isOpened():
+            if st.session_state.get('stop_processing'):
+                break
+
             ret, frame = cap.read()
             if not ret:
                 break
@@ -207,6 +212,12 @@ def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, vide
             progress_bar.progress(frame_counter / total_frames)
 
         cap.release()
+
+        # Check if processing was stopped
+        if st.session_state.get('stop_processing'):
+            st.warning("🛑 Video processing was stopped by user.")
+            st.session_state.stop_processing = False
+            return
 
         st.success(f"✅ Video Session {video_session_id} identification completed!")
         if person_registry:

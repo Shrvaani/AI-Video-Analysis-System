@@ -65,6 +65,9 @@ def detect_payments(st, video_path, video_session_id):
     st.info(f"Processing {total_frames} frames for payment detection...")
 
     while cap.isOpened():
+        if st.session_state.get('stop_processing'):
+            break
+
         ret, frame = cap.read()
         if not ret:
             break
@@ -152,6 +155,12 @@ def detect_payments(st, video_path, video_session_id):
         progress_bar.progress(frame_counter / total_frames)
 
     cap.release()
+
+    # Check if processing was stopped
+    if st.session_state.get('stop_processing'):
+        st.warning("🛑 Payment detection was stopped by user.")
+        st.session_state.stop_processing = False
+        return None
 
     total_payments = cash_payments + card_payments
     st.success(f"✅ Payment Detection Completed!")
