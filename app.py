@@ -790,13 +790,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
         current_session_id = st.session_state.current_video_session
     
-    # Video processing header
-    if st.session_state.workflow_mode == "detect_identify":
-        st.markdown("#### 🔍 Identify Mode")
-        st.markdown("*Identifying persons based on previously detected data.*")
-    elif st.session_state.workflow_mode == "detect_identify_payment":
-        st.markdown("#### 💰 Detect, Identify & Payment Mode")
-        st.markdown("*Processing video with person detection, identification, and payment analysis.*")
+    # Video processing - workflow mode is handled in the logic modules
     
     # Video processing interface - actual processing happens in the logic modules
     
