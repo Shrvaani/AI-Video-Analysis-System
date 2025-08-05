@@ -74,12 +74,18 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
         max_frame_gap = st.slider("Max Frame Gap", 10, 100, 30, 5,
                                  help="Max frames to consider for re-identification")
 
-    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing"):
-        del st.session_state.current_video_session
-        st.success("Video processing stopped. You can now upload a new video.")
+    # Initialize stop flag if not exists
+    if 'stop_processing' not in st.session_state:
+        st.session_state.stop_processing = False
+
+    # Stop button - sets the stop flag
+    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_detection_{video_session_id}"):
+        st.session_state.stop_processing = True
+        st.success("🛑 Stop signal sent. Processing will stop after current frame.")
 
     if video_path and 'current_video_session' not in st.session_state:
         st.session_state.current_video_session = video_session_id
+        st.session_state.stop_processing = False  # Reset stop flag
         st.success(f"**Video Session {video_session_id}:** Video processing started!")
 
     if 'current_video_session' in st.session_state and video_session_id == st.session_state.current_video_session:
@@ -109,7 +115,7 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
 
         while cap.isOpened():
             # Check if processing should be stopped
-            if 'current_video_session' not in st.session_state:
+            if st.session_state.stop_processing:
                 st.warning("🛑 Video processing stopped by user.")
                 break
                 
@@ -258,7 +264,9 @@ known_faces/
         if os.path.exists(video_session_dir):
             shutil.rmtree(video_session_dir)
         
+        # Clean up session state
         del st.session_state.current_video_session
+        st.session_state.stop_processing = False  # Reset stop flag
         st.info("The video has been processed. Switch to Identify mode or upload a new video.")
 
     if not video_path and not st.session_state.uploaded_videos:
