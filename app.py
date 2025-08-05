@@ -848,16 +848,46 @@ st.markdown("### 📋 Previously Processed Sessions")
 
 # Use actual uploaded videos from session state instead of file system
 uploaded_videos = st.session_state.get('uploaded_videos', [])
-if uploaded_videos:
-    st.markdown(f"**Total Sessions:** {len(uploaded_videos)}")
+processed_videos = []
+
+# Filter to only show videos that have actually been processed
+for video_info in uploaded_videos:
+    session_id = video_info.get('session_id')
+    if session_id:
+        # Check if this session has been processed by looking for data
+        has_processed_data = False
+        
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            try:
+                # Check if there's any data in Supabase for this session
+                persons_data = supabase_manager.get_persons_by_session(session_id)
+                if persons_data:
+                    has_processed_data = True
+            except Exception:
+                pass
+        
+        # Fallback to local file system check
+        if not has_processed_data:
+            detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+            identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+            if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                has_processed_data = True
+            elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                has_processed_data = True
+        
+        if has_processed_data:
+            processed_videos.append(video_info)
+
+if processed_videos:
+    st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
     
     # Create a 2-column, 10-row grid layout
-    for row in range(0, min(len(uploaded_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
+    for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
         col_left, col_right = st.columns(2)
         
         # Left column session
-        if row < len(uploaded_videos):
-            video_info = uploaded_videos[row]
+        if row < len(processed_videos):
+            video_info = processed_videos[row]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
@@ -893,8 +923,8 @@ if uploaded_videos:
                 """, unsafe_allow_html=True)
 
         # Right column session
-        if row + 1 < len(uploaded_videos):
-            video_info = uploaded_videos[row + 1]
+        if row + 1 < len(processed_videos):
+            video_info = processed_videos[row + 1]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
@@ -929,22 +959,55 @@ if uploaded_videos:
                 </div>
                 """, unsafe_allow_html=True)
 else:
-    st.info("📋 No previously processed sessions found.")
+    if uploaded_videos:
+        st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
+    else:
+        st.info("📋 No previously processed sessions found.")
 
 # Fourth Half - Total Statistics Overview
 st.markdown("---")  # Add a divider
 st.markdown("### 📊 Total Statistics Overview")
 
-# Calculate total statistics from actual uploaded videos
+# Calculate total statistics from actual processed videos
 uploaded_videos = st.session_state.get('uploaded_videos', [])
-if uploaded_videos:
-    total_sessions = len(uploaded_videos)
+processed_videos = []
+
+# Filter to only count videos that have actually been processed
+for video_info in uploaded_videos:
+    session_id = video_info.get('session_id')
+    if session_id:
+        # Check if this session has been processed by looking for data
+        has_processed_data = False
+        
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            try:
+                # Check if there's any data in Supabase for this session
+                persons_data = supabase_manager.get_persons_by_session(session_id)
+                if persons_data:
+                    has_processed_data = True
+            except Exception:
+                pass
+        
+        # Fallback to local file system check
+        if not has_processed_data:
+            detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+            identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+            if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                has_processed_data = True
+            elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                has_processed_data = True
+        
+        if has_processed_data:
+            processed_videos.append(video_info)
+
+if processed_videos:
+    total_sessions = len(processed_videos)
     
     # Count detection and identification sessions
     total_detected_sessions = 0
     total_identified_sessions = 0
     
-    for video_info in uploaded_videos:
+    for video_info in processed_videos:
         session_id = video_info.get('session_id')
         if session_id:
             # Check if this session has any detected or identified persons
@@ -975,7 +1038,7 @@ else:
     total_sessions = 0
     total_detected_sessions = 0
     total_identified_sessions = 0
-    
+
     if total_detected_sessions > 0 or total_identified_sessions > 0:
         # Check if pandas and plotly are available for chart creation
         if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
@@ -1006,7 +1069,10 @@ else:
             with stat_col3:
                 st.metric("Identification Sessions", total_identified_sessions)
     else:
-        st.info("📊 No statistics available yet. Process some videos to see the overview.")
+        if uploaded_videos:
+            st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
+        else:
+            st.info("📊 No statistics available yet. Process some videos to see the overview.")
 
 with col1:
     # Session Control Panel - moved to the far right
