@@ -1064,48 +1064,74 @@ if processed_videos:
         session_id = video_info.get('session_id')
         if session_id:
             # Check if this session has any detected or identified persons
+            session_has_detected = False
+            session_has_identified = False
+            
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                 try:
                     persons_data = supabase_manager.get_persons_by_session(session_id)
-                    if any(p.get('detection_type') == 'detected' for p in persons_data):
-                        total_detected_sessions += 1
-                    if any(p.get('detection_type') == 'identified' for p in persons_data):
-                        total_identified_sessions += 1
+                    if persons_data:
+                        session_has_detected = any(p.get('detection_type') == 'detected' for p in persons_data)
+                        session_has_identified = any(p.get('detection_type') == 'identified' for p in persons_data)
                 except Exception as e:
                     # Fallback to local file system
                     detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                     identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-                    if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
-                        total_detected_sessions += 1
-                    if os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
-                        total_identified_sessions += 1
+                    session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
+                    session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
             else:
                 # Use local file system
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-                if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
-                    total_detected_sessions += 1
-                if os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
-                    total_identified_sessions += 1
+                session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
+                session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
+            
+            # Categorize the session based on what type of processing was done
+            if session_has_identified:
+                # If session has identified persons, it's an identification session
+                total_identified_sessions += 1
+            elif session_has_detected:
+                # If session only has detected persons (no identified), it's a detection session
+                total_detected_sessions += 1
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
         # Create data for pie chart
         chart_data = pd.DataFrame({
-            'Category': ['Total Sessions', 'Detection Sessions', 'Identification Sessions'],
-            'Count': [total_sessions, total_detected_sessions, total_identified_sessions]
+            'Category': ['Detection Sessions', 'Identification Sessions'],
+            'Count': [total_detected_sessions, total_identified_sessions]
         })
         
         # Create pie chart with count labels
         fig = px.pie(chart_data, values='Count', names='Category', 
-                    title='Total Statistics Overview',
-                    color_discrete_sequence=['#00b894', '#667eea', '#764ba2'])
+                    title='Session Processing Breakdown',
+                    color_discrete_sequence=['#667eea', '#764ba2'])
         
         # Update the pie chart to show counts instead of percentages
         fig.update_traces(textinfo='label+value', textposition='inside')
         
         # Display pie chart
         st.plotly_chart(fig)
+        
+        # Add debug information for session counting
+        if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
+            st.write("**Session Count Debug Info:**")
+            st.write(f"- Total processed sessions: {total_sessions}")
+            st.write(f"- Detection sessions: {total_detected_sessions}")
+            st.write(f"- Identification sessions: {total_identified_sessions}")
+            st.write("**Individual Session Details:**")
+            for i, video_info in enumerate(processed_videos):
+                session_id = video_info.get('session_id')
+                st.write(f"Session {i+1}: {session_id}")
+                if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                    try:
+                        persons_data = supabase_manager.get_persons_by_session(session_id)
+                        detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                        identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                        st.write(f"  - Detected persons: {detected_count}")
+                        st.write(f"  - Identified persons: {identified_count}")
+                    except Exception as e:
+                        st.write(f"  - Error getting data: {e}")
     else:
         # Fallback: display statistics as text
         st.markdown("### 📊 Statistics Summary")
