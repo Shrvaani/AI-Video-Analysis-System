@@ -449,6 +449,9 @@ def get_processed_videos():
     uploaded_videos = st.session_state.get('uploaded_videos', [])
     processed_videos = []
     
+    # Debug: Show what we're checking
+    st.write(f"**Debug - Checking {len(uploaded_videos)} uploaded videos for processed data**")
+    
     for video_info in uploaded_videos:
         session_id = video_info.get('session_id')
         if session_id:
@@ -459,10 +462,13 @@ def get_processed_videos():
                 try:
                     # Check if there's any data in Supabase for this session
                     persons_data = supabase_manager.get_persons_by_session(session_id)
+                    st.write(f"**Debug - Session {session_id}:** Supabase returned {len(persons_data) if persons_data else 0} persons")
                     if persons_data and len(persons_data) > 0:
                         has_processed_data = True
+                        st.write(f"**Debug - Session {session_id}:** ✅ Has processed data in Supabase")
                 except Exception as e:
                     # If Supabase check fails, try local file system
+                    st.write(f"**Debug - Session {session_id}:** ❌ Supabase error: {e}")
                     pass
             
             # Fallback to local file system check
@@ -471,12 +477,18 @@ def get_processed_videos():
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
                     has_processed_data = True
+                    st.write(f"**Debug - Session {session_id}:** ✅ Has processed data in local files (detected)")
                 elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
                     has_processed_data = True
+                    st.write(f"**Debug - Session {session_id}:** ✅ Has processed data in local files (identified)")
+                else:
+                    st.write(f"**Debug - Session {session_id}:** ❌ No processed data found")
             
             if has_processed_data:
                 processed_videos.append(video_info)
+                st.write(f"**Debug - Session {session_id}:** ✅ Added to processed videos")
     
+    st.write(f"**Debug - Total processed videos found: {len(processed_videos)}**")
     return processed_videos
 
 # Main Header
@@ -1050,6 +1062,13 @@ st.markdown("### 📊 Total Statistics Overview")
 
 # Calculate total statistics from the same processed videos list
 processed_videos = get_processed_videos()
+
+# Debug: Show what we found
+st.write(f"**Debug - Processed Videos Found:** {len(processed_videos)}")
+if processed_videos:
+    st.write("**Debug - Session IDs:**")
+    for video_info in processed_videos:
+        st.write(f"- {video_info.get('session_id', 'Unknown')}")
 
 if processed_videos:
     total_sessions = len(processed_videos)
