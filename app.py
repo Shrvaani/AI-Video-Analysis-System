@@ -1163,6 +1163,7 @@ with col2:
         supabase_cleared = False
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
+                st.info("🗑️ Clearing cloud data...")
                 if supabase_manager.clear_all_data():
                     supabase_cleared = True
                     st.success("🗑️ All data cleared (local + cloud storage)!")

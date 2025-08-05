@@ -302,11 +302,22 @@ class SupabaseManager:
             return False
         
         try:
-            # Clear all tables - use proper delete syntax
-            self.client.table('face_images').delete().execute()
-            self.client.table('persons').delete().execute()
-            self.client.table('videos').delete().execute()
-            self.client.table('payment_results').delete().execute()
+            # Get all session IDs first
+            sessions_result = self.client.table('sessions').select('session_id').execute()
+            session_ids = [session['session_id'] for session in sessions_result.data]
+            
+            # Delete data for each session (this avoids foreign key constraint issues)
+            for session_id in session_ids:
+                # Delete face images
+                self.client.table('face_images').delete().eq('session_id', session_id).execute()
+                # Delete persons
+                self.client.table('persons').delete().eq('session_id', session_id).execute()
+                # Delete videos
+                self.client.table('videos').delete().eq('session_id', session_id).execute()
+                # Delete payment results
+                self.client.table('payment_results').delete().eq('session_id', session_id).execute()
+            
+            # Finally delete all sessions
             self.client.table('sessions').delete().execute()
             
             # Clear storage bucket
