@@ -408,7 +408,28 @@ if 'video_hashes' not in st.session_state:
     else:
         st.session_state.video_hashes = {}
 if 'uploaded_videos' not in st.session_state:
-    st.session_state.uploaded_videos = []
+    # Try to load existing sessions from Supabase
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            all_sessions = supabase_manager.get_all_sessions()
+            if all_sessions:
+                # Convert Supabase sessions to uploaded_videos format
+                uploaded_videos = []
+                for session in all_sessions:
+                    uploaded_videos.append({
+                        "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
+                        "session_id": session['session_id'],
+                        "hash": session['video_hash']
+                    })
+                st.session_state.uploaded_videos = uploaded_videos
+                st.info(f"📊 Loaded {len(uploaded_videos)} existing sessions from cloud storage")
+            else:
+                st.session_state.uploaded_videos = []
+        except Exception as e:
+            st.warning(f"⚠️ Failed to load existing sessions from cloud: {e}")
+            st.session_state.uploaded_videos = []
+    else:
+        st.session_state.uploaded_videos = []
 if 'person_count' not in st.session_state:
     st.session_state.person_count = {}
 if 'workflow_mode' not in st.session_state:
@@ -438,9 +459,10 @@ def get_processed_videos():
                 try:
                     # Check if there's any data in Supabase for this session
                     persons_data = supabase_manager.get_persons_by_session(session_id)
-                    if persons_data:
+                    if persons_data and len(persons_data) > 0:
                         has_processed_data = True
-                except Exception:
+                except Exception as e:
+                    # If Supabase check fails, try local file system
                     pass
             
             # Fallback to local file system check
@@ -906,6 +928,31 @@ else:
 # Third Half - Previously Processed Sessions (2 Columns, 10 Rows Grid)
 st.markdown("---")  # Add a divider
 st.markdown("### 📋 Previously Processed Sessions")
+
+# Add refresh button for session data
+col_refresh1, col_refresh2 = st.columns([1, 4])
+with col_refresh1:
+    if st.button("🔄 Refresh Session Data", help="Reload session data from cloud storage"):
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            try:
+                all_sessions = supabase_manager.get_all_sessions()
+                if all_sessions:
+                    uploaded_videos = []
+                    for session in all_sessions:
+                        uploaded_videos.append({
+                            "video_path": f"supabase_session_{session['session_id']}",
+                            "session_id": session['session_id'],
+                            "hash": session['video_hash']
+                        })
+                    st.session_state.uploaded_videos = uploaded_videos
+                    st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
+                    st.rerun()
+                else:
+                    st.info("📋 No sessions found in cloud storage")
+            except Exception as e:
+                st.error(f"❌ Failed to refresh session data: {e}")
+        else:
+            st.warning("⚠️ Cloud storage not available")
 
 # Use the shared function to get processed videos
 processed_videos = get_processed_videos()
