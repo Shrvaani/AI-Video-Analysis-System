@@ -34,6 +34,12 @@ def detect_payments(st, video_path, video_session_id):
     st.subheader(f"Payment Detection in Video Session {video_session_id}: {os.path.basename(video_path)}")
     st.markdown("Detecting cash and card payments in the video.")
 
+    # Add stop button for payment detection
+    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_payment_{video_session_id}"):
+        del st.session_state.current_video_session
+        st.success("Video processing stopped. You can now upload a new video.")
+        return None
+
     # Check if models are available
     if model1 is None and model2 is None:
         st.error("❌ Payment detection models are not available!")
@@ -65,6 +71,11 @@ def detect_payments(st, video_path, video_session_id):
     st.info(f"Processing {total_frames} frames for payment detection...")
 
     while cap.isOpened():
+        # Check if processing should be stopped
+        if 'current_video_session' not in st.session_state:
+            st.warning("🛑 Payment detection stopped by user.")
+            break
+            
         ret, frame = cap.read()
         if not ret:
             break

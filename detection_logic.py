@@ -108,6 +108,11 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
             total_detections_display = st.empty()
 
         while cap.isOpened():
+            # Check if processing should be stopped
+            if 'current_video_session' not in st.session_state:
+                st.warning("🛑 Video processing stopped by user.")
+                break
+                
             ret, frame = cap.read()
             if not ret:
                 break
