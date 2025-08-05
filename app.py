@@ -882,8 +882,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             else:
                 st.session_state.force_detection = False
             
-            # Override workflow mode to force detection if needed
-            if st.session_state.get('force_detection', False):
+            # Override workflow mode to force detection if needed (but not if payment_only is selected)
+            if st.session_state.get('force_detection', False) and st.session_state.get('workflow_mode') != "payment_only":
                 st.session_state.workflow_mode = "detect_identify"
             # Check existing data with stricter validation
             existing_detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
