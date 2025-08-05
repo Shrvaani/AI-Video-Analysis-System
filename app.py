@@ -490,20 +490,15 @@ with col2:
             with open(temp_video_path, "wb") as f:
                 f.write(video_content)
             
-            # Save to Supabase if available
-            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-                try:
-                    # Reset file pointer to beginning
-                    video_file.seek(0)
-                    video_content = video_file.read()
-                    
-                    # Save video to Supabase storage
-                    if supabase_manager.save_video_file(video_session_id, video_file.name, video_content):
-                        st.success("☁️ Video saved to cloud storage")
-                    else:
-                        st.warning("⚠️ Failed to save video to cloud storage, using local storage only")
-                except Exception as e:
-                    st.warning(f"⚠️ Cloud storage error: {e}. Using local storage only.")
+                    # Save to Supabase if available (will be done after session is created)
+        video_content_for_supabase = None
+        if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            try:
+                # Reset file pointer to beginning and read content for later use
+                video_file.seek(0)
+                video_content_for_supabase = video_file.read()
+            except Exception as e:
+                st.warning(f"⚠️ Failed to prepare video for cloud storage: {e}")
             
             # Verify the file was saved correctly
             if not os.path.exists(temp_video_path):
@@ -535,15 +530,23 @@ with col2:
             "hash": video_hash
         })
         
-        # Save session data to Supabase if available
+        # Save session data to Supabase if available (will be updated when workflow mode is selected)
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
+                # Save with temporary workflow mode, will be updated later
                 supabase_manager.save_session_data(
                     video_session_id, 
                     video_hash, 
-                    st.session_state.get('workflow_mode', 'unknown'),
+                    'uploaded',  # Temporary status
                     video_file.name
                 )
+                
+                # Now save video file after session is created
+                if video_content_for_supabase:
+                    if supabase_manager.save_video_file(video_session_id, video_file.name, video_content_for_supabase):
+                        st.success("☁️ Video saved to cloud storage")
+                    else:
+                        st.warning("⚠️ Failed to save video to cloud storage, using local storage only")
             except Exception as e:
                 st.warning(f"⚠️ Failed to save session data to cloud: {e}")
         
@@ -574,11 +577,29 @@ if video_file and not st.session_state.get('workflow_mode'):
     with col_workflow1:
         if st.button("🔍 Detect & Identify", use_container_width=True):
             st.session_state.workflow_mode = "detect_identify"
+            # Update session in Supabase
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
+                try:
+                    supabase_manager.update_session_status(
+                        st.session_state.pending_processing['video_session_id'], 
+                        'detect_identify'
+                    )
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to update session status: {e}")
             st.success("✅ Switched to Detect & Identify mode")
 
     with col_workflow2:
         if st.button("💰 Detect, Identify & Payment", use_container_width=True):
             st.session_state.workflow_mode = "detect_identify_payment"
+            # Update session in Supabase
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
+                try:
+                    supabase_manager.update_session_status(
+                        st.session_state.pending_processing['video_session_id'], 
+                        'detect_identify_payment'
+                    )
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to update session status: {e}")
             st.success("✅ Switched to Detect, Identify & Payment mode")
 
 elif video_file and st.session_state.get('workflow_mode'):

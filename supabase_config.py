@@ -60,14 +60,15 @@ class SupabaseManager:
             st.error(f"Error saving session data: {e}")
             return False
 
-    def update_session_status(self, session_id, status):
-        """Update session status"""
+    def update_session_status(self, session_id, workflow_mode):
+        """Update session workflow mode"""
         if not self.is_connected():
             return False
         
         try:
             self.client.table('sessions').update({
-                'status': status,
+                'workflow_mode': workflow_mode,
+                'status': 'processing',
                 'updated_at': datetime.now().isoformat()
             }).eq('session_id', session_id).execute()
             return True
