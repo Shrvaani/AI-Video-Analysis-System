@@ -176,8 +176,8 @@ def detect_payments(st, video_path, video_session_id):
             payment_data = {
                 "total_payments": total_payments,
                 "cash_payments": cash_payments,
-                "card_payments": card_payments,
-                "payment_type": payment_type or "None"
+                "card_payments": card_payments
+                # Note: payment_type is not stored in database, only used for display
             }
             if supabase_manager.save_payment_results(video_session_id, payment_data):
                 st.success("☁️ Payment results saved to cloud storage")

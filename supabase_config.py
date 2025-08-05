@@ -192,7 +192,10 @@ class SupabaseManager:
                 'created_at': datetime.now().isoformat()
             }
             
-            self.client.table('payment_results').insert(data).execute()
+            # Remove any fields that don't exist in the database schema
+            # The payment_results table only has: session_id, total_payments, cash_payments, card_payments, created_at
+            
+            result = self.client.table('payment_results').insert(data).execute()
             return True
         except Exception as e:
             st.error(f"Error saving payment results: {e}")
@@ -244,6 +247,30 @@ class SupabaseManager:
             return result.data
         except Exception as e:
             st.error(f"Error getting face images: {e}")
+            return []
+
+    def get_payment_results(self, session_id):
+        """Get payment results for a session"""
+        if not self.is_connected():
+            return None
+        
+        try:
+            result = self.client.table('payment_results').select('*').eq('session_id', session_id).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            st.error(f"Error getting payment results: {e}")
+            return None
+
+    def get_all_payment_results(self):
+        """Get all payment results"""
+        if not self.is_connected():
+            return []
+        
+        try:
+            result = self.client.table('payment_results').select('*').order('created_at', desc=True).execute()
+            return result.data
+        except Exception as e:
+            st.error(f"Error getting payment results: {e}")
             return []
 
     def clear_all_data(self):
