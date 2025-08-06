@@ -640,8 +640,85 @@ st.markdown("""
 # Supabase Status Indicator
 if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
     st.success("☁️ **Cloud Storage**: Connected to Supabase - Data will be saved to cloud")
+    
+    # Debug: Show database connection and data status
+    if st.checkbox("🔧 Show Database Debug Info", key="debug_db"):
+        st.subheader("🔍 Database Debug Information")
+        
+        # Check sessions table
+        try:
+            all_sessions = supabase_manager.get_all_sessions()
+            st.write(f"**Sessions in database:** {len(all_sessions)}")
+            if all_sessions:
+                st.write("**Session IDs:**")
+                for session in all_sessions:
+                    st.write(f"- {session.get('session_id', 'Unknown')} (Mode: {session.get('workflow_mode', 'Unknown')})")
+            else:
+                st.write("❌ No sessions found in database")
+        except Exception as e:
+            st.error(f"❌ Error getting sessions: {e}")
+        
+        # Check persons table
+        try:
+            if all_sessions:
+                total_persons = 0
+                for session in all_sessions:
+                    persons = supabase_manager.get_persons_by_session(session['session_id'])
+                    total_persons += len(persons)
+                st.write(f"**Total persons in database:** {total_persons}")
+            else:
+                st.write("**Total persons in database:** 0 (no sessions)")
+        except Exception as e:
+            st.error(f"❌ Error getting persons: {e}")
+        
+        # Check payment results
+        try:
+            payment_results = supabase_manager.get_all_payment_results()
+            st.write(f"**Payment results in database:** {len(payment_results)}")
+        except Exception as e:
+            st.error(f"❌ Error getting payment results: {e}")
+        
+        # Show session state
+        st.write("**Current session state:**")
+        st.write(f"- uploaded_videos: {len(st.session_state.get('uploaded_videos', []))}")
+        st.write(f"- video_hashes: {len(st.session_state.get('video_hashes', {}))}")
+        st.write(f"- workflow_mode: {st.session_state.get('workflow_mode', 'None')}")
+        
+        # Show processed videos
+        processed_videos = get_processed_videos()
+        st.write(f"**Processed videos:** {len(processed_videos)}")
+        if processed_videos:
+            for video in processed_videos:
+                st.write(f"- {video.get('session_id', 'Unknown')}")
 else:
     st.warning("💾 **Local Storage**: Using local file system - Data will be lost on app restart")
+
+# Add refresh button for database data
+if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+    if st.button("🔄 Refresh Data from Database", key="refresh_db_data"):
+        try:
+            # Reload sessions from Supabase
+            all_sessions = supabase_manager.get_all_sessions()
+            if all_sessions:
+                # Convert Supabase sessions to uploaded_videos format
+                uploaded_videos = []
+                for session in all_sessions:
+                    uploaded_videos.append({
+                        "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
+                        "session_id": session['session_id'],
+                        "hash": session['video_hash']
+                    })
+                st.session_state.uploaded_videos = uploaded_videos
+                st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
+                # Also update video_hashes to include the loaded sessions
+                for session in all_sessions:
+                    st.session_state.video_hashes[session['session_id']] = session['video_hash']
+            else:
+                st.session_state.uploaded_videos = []
+                st.info("ℹ️ No sessions found in database")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Failed to refresh data: {e}")
 
 # Main content area with right sidebar
 col1, spacer, col2 = st.columns([1, 0.1, 1])
