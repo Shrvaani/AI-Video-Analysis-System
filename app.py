@@ -1186,14 +1186,14 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     st.session_state.current_video_session = video_session_id
                     identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
             else:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
-                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                        <span class="status-indicator status-active"></span>Processing...
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.session_state.current_video_session = video_session_id
+                st.markdown(f"""
+                <div class="session-card">
+                    <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
+                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.current_video_session = video_session_id
                 detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
                 st.session_state.video_hashes[video_session_id] = video_hash
                 save_video_hashes()
@@ -1207,7 +1207,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
-            detect_payments(st, temp_video_path, video_session_id)
+                detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
         del st.session_state.pending_processing
@@ -1229,7 +1229,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
         if st.session_state.workflow_mode == "detect_identify":
             # Show person detection/identification metrics
-        col_stats1, col_stats2, col_stats3 = st.columns(3)
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
         
         with col_stats1:
             st.metric("Total Unique Persons", "Processing...")
