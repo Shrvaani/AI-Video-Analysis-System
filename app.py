@@ -1904,6 +1904,67 @@ if processed_videos:
             
             # Display pie chart
             st.plotly_chart(fig, use_container_width=True)
+            
+            # Add payment detection pie chart
+            st.markdown("### 💳 Payment Detection Statistics")
+            
+            # Collect payment data from all sessions
+            total_cash_payments = 0
+            total_card_payments = 0
+            payment_sessions = 0
+            
+            for video_info in processed_videos:
+                session_id = video_info.get('session_id')
+                workflow_mode = video_info.get('workflow_mode', 'unknown')
+                
+                # Only count payment sessions
+                if workflow_mode == "payment_only":
+                    payment_sessions += 1
+                    
+                    # Get payment data from Supabase
+                    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                        try:
+                            payment_data = supabase_manager.get_payment_results(session_id)
+                            if payment_data:
+                                total_cash_payments += payment_data.get('cash_payments', 0)
+                                total_card_payments += payment_data.get('card_payments', 0)
+                        except Exception as e:
+                            pass  # Ignore payment data errors
+            
+            # Create payment pie chart if there are payment sessions
+            if payment_sessions > 0 and (total_cash_payments > 0 or total_card_payments > 0):
+                payment_chart_data = pd.DataFrame({
+                    'Payment Type': ['Cash Payments', 'Card Payments'],
+                    'Count': [total_cash_payments, total_card_payments]
+                })
+                
+                # Filter out categories with 0 count
+                payment_chart_filtered = payment_chart_data[payment_chart_data['Count'] > 0].copy()
+                
+                if len(payment_chart_filtered) > 0:
+                    # Create payment pie chart
+                    payment_fig = px.pie(payment_chart_filtered, values='Count', names='Payment Type', 
+                                       title='Payment Detection Breakdown',
+                                       color_discrete_sequence=['#28a745', '#007bff'])  # Green for cash, blue for card
+                    
+                    # Update the pie chart to show counts instead of percentages
+                    payment_fig.update_traces(textinfo='label+value', textposition='inside')
+                    
+                    # Display payment pie chart
+                    st.plotly_chart(payment_fig, use_container_width=True)
+                    
+                    # Show payment summary metrics
+                    payment_col1, payment_col2, payment_col3 = st.columns(3)
+                    with payment_col1:
+                        st.metric("Cash Payments", total_cash_payments)
+                    with payment_col2:
+                        st.metric("Card Payments", total_card_payments)
+                    with payment_col3:
+                        st.metric("Total Payments", total_cash_payments + total_card_payments)
+                else:
+                    st.info("💳 No payment data available yet. Process some payment videos to see payment statistics.")
+            else:
+                st.info("💳 No payment detection sessions found. Use 'Payment Only' mode to see payment statistics.")
     else:
         st.info("📊 No processing data available yet. Process some videos to see statistics.")
 
