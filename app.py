@@ -1325,8 +1325,9 @@ if processed_videos:
             if session_has_identified:
                 # If session has identified persons, it's an identification session
                 total_identified_sessions += 1
-            elif session_has_detected:
-                # If session only has detected persons (no identified), it's a detection session
+            if session_has_detected:
+                # If session has detected persons, it's also a detection session
+                # (A session can be both detection and identification)
                 total_detected_sessions += 1
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
@@ -1338,8 +1339,20 @@ if processed_videos:
                 'Category': ['Processed Sessions'],
                 'Count': [total_sessions]
             })
+        elif total_detected_sessions > 0 and total_identified_sessions == 0:
+            # Only detection sessions
+            chart_data = pd.DataFrame({
+                'Category': ['Detection Sessions'],
+                'Count': [total_detected_sessions]
+            })
+        elif total_detected_sessions == 0 and total_identified_sessions > 0:
+            # Only identification sessions
+            chart_data = pd.DataFrame({
+                'Category': ['Identification Sessions'],
+                'Count': [total_identified_sessions]
+            })
         else:
-            # Normal case with detection/identification data
+            # Both detection and identification sessions
             chart_data = pd.DataFrame({
                 'Category': ['Detection Sessions', 'Identification Sessions'],
                 'Count': [total_detected_sessions, total_identified_sessions]
