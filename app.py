@@ -553,33 +553,38 @@ if 'video_hashes' not in st.session_state:
             st.session_state.video_hashes = json.load(f)
     else:
         st.session_state.video_hashes = {}
-if 'uploaded_videos' not in st.session_state:
-    # Try to load existing sessions from Supabase
-    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-        try:
-            all_sessions = supabase_manager.get_all_sessions()
-            if all_sessions:
-                # Convert Supabase sessions to uploaded_videos format
-                uploaded_videos = []
-                for session in all_sessions:
-                    uploaded_videos.append({
-                        "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
-                        "session_id": session['session_id'],
-                        "hash": session['video_hash'],
-                        "workflow_mode": session.get('workflow_mode', 'unknown'),
-                        "created_at": session.get('created_at', 'unknown')
-                    })
-                st.session_state.uploaded_videos = uploaded_videos
-                st.info(f"📊 Loaded {len(uploaded_videos)} existing sessions from cloud storage")
-                # Also update video_hashes to include the loaded sessions
-                for session in all_sessions:
-                    st.session_state.video_hashes[session['session_id']] = session['video_hash']
-            else:
-                st.session_state.uploaded_videos = []
-        except Exception as e:
-            st.warning(f"⚠️ Failed to load existing sessions from cloud: {e}")
+# Always try to load existing sessions from Supabase on every page load
+if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+    try:
+        all_sessions = supabase_manager.get_all_sessions()
+        if all_sessions:
+            # Convert Supabase sessions to uploaded_videos format
+            uploaded_videos = []
+            for session in all_sessions:
+                uploaded_videos.append({
+                    "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
+                    "session_id": session['session_id'],
+                    "hash": session['video_hash'],
+                    "workflow_mode": session.get('workflow_mode', 'unknown'),
+                    "created_at": session.get('created_at', 'unknown')
+                })
+            st.session_state.uploaded_videos = uploaded_videos
+            # Also update video_hashes to include the loaded sessions
+            for session in all_sessions:
+                st.session_state.video_hashes[session['session_id']] = session['video_hash']
+            
+            # Show notification only if this is a fresh load (not already loaded)
+            if 'data_loaded_notification' not in st.session_state:
+                st.session_state.data_loaded_notification = True
+                st.success(f"📊 Automatically loaded {len(uploaded_videos)} sessions from cloud storage")
+        else:
             st.session_state.uploaded_videos = []
-    else:
+    except Exception as e:
+        st.warning(f"⚠️ Failed to load existing sessions from cloud: {e}")
+        if 'uploaded_videos' not in st.session_state:
+            st.session_state.uploaded_videos = []
+else:
+    if 'uploaded_videos' not in st.session_state:
         st.session_state.uploaded_videos = []
 if 'person_count' not in st.session_state:
     st.session_state.person_count = {}
@@ -703,68 +708,8 @@ if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
 else:
     st.warning("💾 **Local Storage**: Using local file system - Data will be lost on app restart")
 
-# Add refresh button for database data
-if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("🔄 Refresh Data from Database", key="refresh_db_data"):
-            try:
-                # Reload sessions from Supabase
-                all_sessions = supabase_manager.get_all_sessions()
-                if all_sessions:
-                    # Convert Supabase sessions to uploaded_videos format
-                    uploaded_videos = []
-                    for session in all_sessions:
-                        uploaded_videos.append({
-                            "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
-                            "session_id": session['session_id'],
-                            "hash": session['video_hash'],
-                            "workflow_mode": session.get('workflow_mode', 'unknown'),
-                            "created_at": session.get('created_at', 'unknown')
-                        })
-                    st.session_state.uploaded_videos = uploaded_videos
-                    st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
-                    # Also update video_hashes to include the loaded sessions
-                    for session in all_sessions:
-                        st.session_state.video_hashes[session['session_id']] = session['video_hash']
-                else:
-                    st.session_state.uploaded_videos = []
-                    st.info("ℹ️ No sessions found in database")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Failed to refresh data: {e}")
-    
-    with col2:
-        if st.button("🔄 Force Reload All Data", key="force_refresh"):
-            try:
-                # Clear session state and force reload
-                st.session_state.uploaded_videos = []
-                st.session_state.video_hashes = {}
-                
-                # Reload sessions from Supabase
-                all_sessions = supabase_manager.get_all_sessions()
-                if all_sessions:
-                    # Convert Supabase sessions to uploaded_videos format
-                    uploaded_videos = []
-                    for session in all_sessions:
-                        uploaded_videos.append({
-                            "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
-                            "session_id": session['session_id'],
-                            "hash": session['video_hash'],
-                            "workflow_mode": session.get('workflow_mode', 'unknown'),
-                            "created_at": session.get('created_at', 'unknown')
-                        })
-                    st.session_state.uploaded_videos = uploaded_videos
-                    st.success(f"✅ Force reloaded {len(uploaded_videos)} sessions from cloud storage")
-                    # Also update video_hashes to include the loaded sessions
-                    for session in all_sessions:
-                        st.session_state.video_hashes[session['session_id']] = session['video_hash']
-                else:
-                    st.session_state.uploaded_videos = []
-                    st.info("ℹ️ No sessions found in database")
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Failed to force reload data: {e}")
+# Data is now automatically loaded on every page refresh
+# Debug info is available below if needed
 
 # Main content area with right sidebar
 col1, spacer, col2 = st.columns([1, 0.1, 1])
