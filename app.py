@@ -1988,39 +1988,23 @@ if processed_videos:
             total_card_payments = 0
             payment_sessions = 0
             
-            # Debug: Show all workflow modes
-            st.write(f"**Debug - Total processed videos: {len(processed_videos)}**")
-            for i, video_info in enumerate(processed_videos):
+            for video_info in processed_videos:
                 session_id = video_info.get('session_id')
                 workflow_mode = video_info.get('workflow_mode', 'unknown')
-                st.write(f"Session {i+1}: {session_id} - Workflow Mode: {workflow_mode}")
                 
                 # Only count payment sessions
                 if workflow_mode == "payment_only":
                     payment_sessions += 1
-                    st.write(f"  -> Found payment session: {session_id}")
                     
                     # Get payment data from Supabase
                     if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                         try:
                             payment_data = supabase_manager.get_payment_results(session_id)
                             if payment_data:
-                                cash_count = payment_data.get('cash_payments', 0)
-                                card_count = payment_data.get('card_payments', 0)
-                                total_cash_payments += cash_count
-                                total_card_payments += card_count
-                                st.write(f"  -> Payment data: Cash={cash_count}, Card={card_count}")
-                            else:
-                                st.write(f"  -> No payment data found")
+                                total_cash_payments += payment_data.get('cash_payments', 0)
+                                total_card_payments += payment_data.get('card_payments', 0)
                         except Exception as e:
-                            st.write(f"  -> Error getting payment data: {e}")
-                    else:
-                        st.write(f"  -> Supabase not available")
-            
-            st.write(f"**Debug Summary:**")
-            st.write(f"- Payment sessions found: {payment_sessions}")
-            st.write(f"- Total cash payments: {total_cash_payments}")
-            st.write(f"- Total card payments: {total_card_payments}")
+                            pass  # Ignore payment data errors
             
             # Create payment pie chart if there are payment sessions
             if payment_sessions > 0 and (total_cash_payments > 0 or total_card_payments > 0):
