@@ -544,7 +544,7 @@ def check_for_interrupted_processing():
 
 # Check for interrupted processing on every page load
 interrupted_state = check_for_interrupted_processing()
-if interrupted_state:
+if interrupted_state and not st.session_state.get('resume_cancelled', False):
     st.session_state.pending_processing = interrupted_state
     st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
     st.session_state.current_video_session = interrupted_state.get('video_session_id')
@@ -556,11 +556,37 @@ if interrupted_state:
     # Add option to cancel or change workflow mode
     col_resume1, col_resume2, col_resume3 = st.columns([1, 1, 2])
     with col_resume1:
-        if st.button("❌ Cancel Resume", help="Cancel the automatic resume and clear the pending processing"):
+        if st.button("❌ Cancel Resume", key="cancel_resume", help="Cancel the automatic resume and clear the pending processing"):
+            # Clear all pending processing state
             if 'pending_processing' in st.session_state:
                 del st.session_state.pending_processing
             if 'current_video_session' in st.session_state:
                 del st.session_state.current_video_session
+            if 'workflow_mode' in st.session_state:
+                del st.session_state.workflow_mode
+            if 'show_mode_selector' in st.session_state:
+                del st.session_state.show_mode_selector
+            
+            # Clear processing state file if it exists
+            video_session_id = interrupted_state.get('video_session_id')
+            if video_session_id:
+                try:
+                    clear_processing_state(video_session_id)
+                except:
+                    pass  # Ignore errors in clearing processing state
+            
+            # Clear any processing state files from temp directory
+            if os.path.exists(temp_dir):
+                try:
+                    state_files = [f for f in os.listdir(temp_dir) if f.startswith('processing_state_') and f.endswith('.json')]
+                    for state_file in state_files:
+                        os.remove(os.path.join(temp_dir, state_file))
+                except:
+                    pass  # Ignore errors in clearing files
+            
+            # Set cancelled flag to prevent future resumes
+            st.session_state.resume_cancelled = True
+            
             st.success("✅ Automatic resume cancelled. You can now upload a new video.")
             st.rerun()
     
