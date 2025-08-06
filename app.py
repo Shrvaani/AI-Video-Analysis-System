@@ -1190,10 +1190,18 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
         if len(st.session_state.get('video_hashes', {})) == 0:
             st.session_state.force_detection = True
         pending = st.session_state.pending_processing
-        video_session_id = pending['video_session_id']
-        video_session_dir = pending['video_session_dir']
-        temp_video_path = pending['temp_video_path']
-        video_hash = pending['video_hash']
+        video_session_id = pending.get('video_session_id')
+        video_session_dir = pending.get('video_session_dir', os.path.join(temp_dir, video_session_id) if video_session_id else temp_dir)
+        temp_video_path = pending.get('temp_video_path', pending.get('video_path', ''))
+        video_hash = pending.get('video_hash', '')
+        
+        # Check if we have the minimum required data
+        if not video_session_id or not temp_video_path:
+            st.error("❌ Insufficient data to resume processing. Please upload the video again.")
+            # Clear the pending processing
+            if 'pending_processing' in st.session_state:
+                del st.session_state.pending_processing
+            st.stop()
 
         # Progress indicator
         with st.spinner("🔄 Initializing video processing..."):
