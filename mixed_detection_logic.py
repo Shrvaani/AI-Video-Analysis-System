@@ -109,24 +109,53 @@ def mixed_detection_identification(st, base_dir, temp_dir, video_session_dir, vi
 
         # Load existing known faces for identification
         known_faces = {}
-        existing_sessions = [d for d in os.listdir(os.path.join(base_dir, "Detected people")) if os.path.isdir(os.path.join(base_dir, "Detected people", d))]
-        existing_sessions.extend([d for d in os.listdir(os.path.join(base_dir, "Identified people")) if os.path.isdir(os.path.join(base_dir, "Identified people", d))])
+        existing_sessions = []
+        
+        # Check if directories exist and get existing sessions
+        detected_people_dir = os.path.join(base_dir, "Detected people")
+        identified_people_dir = os.path.join(base_dir, "Identified people")
+        
+        if os.path.exists(detected_people_dir):
+            existing_sessions.extend([d for d in os.listdir(detected_people_dir) if os.path.isdir(os.path.join(detected_people_dir, d))])
+        
+        if os.path.exists(identified_people_dir):
+            existing_sessions.extend([d for d in os.listdir(identified_people_dir) if os.path.isdir(os.path.join(identified_people_dir, d))])
+        
+        # Remove duplicates and current session
+        existing_sessions = list(set(existing_sessions))
+        if video_session_id in existing_sessions:
+            existing_sessions.remove(video_session_id)
+        
+        st.info(f"🔍 Found {len(existing_sessions)} existing sessions to check for known faces")
         
         for session_id in existing_sessions:
             detected_path = os.path.join(base_dir, "Detected people", session_id)
             identified_path = os.path.join(base_dir, "Identified people", session_id)
             
-            for person_id in os.listdir(detected_path) if os.path.exists(detected_path) else []:
-                if os.path.isdir(os.path.join(detected_path, person_id)):
-                    images = get_person_images(session_id, person_id, base_dir, is_detected=True)
-                    if images:
-                        known_faces[person_id] = images
+            # Load faces from detected people
+            if os.path.exists(detected_path):
+                for person_id in os.listdir(detected_path):
+                    person_path = os.path.join(detected_path, person_id)
+                    if os.path.isdir(person_path):
+                        images = get_person_images(session_id, person_id, base_dir, is_detected=True)
+                        if images:
+                            known_faces[f"detected_{person_id}"] = images
+                            st.write(f"📸 Loaded {len(images)} images for detected person: {person_id} from session {session_id}")
             
-            for person_id in os.listdir(identified_path) if os.path.exists(identified_path) else []:
-                if os.path.isdir(os.path.join(identified_path, person_id)):
-                    images = get_person_images(session_id, person_id, base_dir, is_detected=False)
-                    if images:
-                        known_faces[person_id] = images
+            # Load faces from identified people
+            if os.path.exists(identified_path):
+                for person_id in os.listdir(identified_path):
+                    person_path = os.path.join(identified_path, person_id)
+                    if os.path.isdir(person_path):
+                        images = get_person_images(session_id, person_id, base_dir, is_detected=False)
+                        if images:
+                            known_faces[f"identified_{person_id}"] = images
+                            st.write(f"📸 Loaded {len(images)} images for identified person: {person_id} from session {session_id}")
+        
+        st.success(f"✅ Loaded {len(known_faces)} known faces from existing sessions")
+        
+        if not known_faces:
+            st.warning("⚠️ No existing faces found. All people will be classified as new.")
 
         cap = cv2.VideoCapture(video_path)
         stframe = st.empty()
@@ -175,20 +204,32 @@ def mixed_detection_identification(st, base_dir, temp_dir, video_session_dir, vi
                     # Try to identify as existing person
                     best_known_match_id = None
                     best_similarity = 0
+                    match_debug_info = []
 
                     for person_id, stored_images in known_faces.items():
                         for stored_img_path in stored_images:
                             stored_img = load_image(stored_img_path)
                             if stored_img is not None and new_img is not None:
-                                similarity = ssim(new_img, stored_img, full=True)[0]
-                                if similarity > best_similarity and similarity > 0.7:
-                                    best_similarity = similarity
-                                    best_known_match_id = person_id
+                                try:
+                                    similarity = ssim(new_img, stored_img, full=True)[0]
+                                    match_debug_info.append(f"{person_id}: {similarity:.3f}")
+                                    if similarity > best_similarity and similarity > 0.5:  # Lowered threshold from 0.7 to 0.5
+                                        best_similarity = similarity
+                                        best_known_match_id = person_id
+                                except Exception as e:
+                                    st.warning(f"Error calculating similarity: {e}")
+                                    continue
+
+                    # Debug: Show top 3 matches if any
+                    if match_debug_info:
+                        match_debug_info.sort(key=lambda x: float(x.split(': ')[1]), reverse=True)
+                        top_matches = match_debug_info[:3]
+                        st.write(f"🔍 Frame {frame_counter} - Top matches: {', '.join(top_matches)}")
 
                     if best_known_match_id:
                         # Existing person identified
                         person_id = best_known_match_id
-                        label = f"Known: {person_id}"
+                        label = f"Known: {person_id} (Sim: {best_similarity:.3f})"
                         color = (0, 255, 0)  # Green for identified
                         person_type = "existing"
                         
@@ -201,6 +242,7 @@ def mixed_detection_identification(st, base_dir, temp_dir, video_session_dir, vi
                             }
                             # Save first identification image
                             save_person_frame(head_crop, video_session_id, person_id, frame_counter, base_dir, is_detected=False)
+                            st.success(f"✅ Identified existing person: {person_id} (similarity: {best_similarity:.3f})")
                         else:
                             person_registry[person_id]["box"] = current_box
                             person_registry[person_id]["frame_count"] += 1
@@ -243,6 +285,7 @@ def mixed_detection_identification(st, base_dir, temp_dir, video_session_dir, vi
                             }
                             # Save first detection image
                             save_person_frame(head_crop, video_session_id, person_id, frame_counter, base_dir, is_detected=True)
+                            st.info(f"🆕 Detected new person: {person_id}")
 
                     current_frame_persons[person_id] = current_box
 
