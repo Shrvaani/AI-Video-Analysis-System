@@ -893,7 +893,6 @@ if video_file and not st.session_state.get('workflow_mode'):
     with col_workflow1:
         if st.button("🔍 Detect & Identify", use_container_width=True):
             st.session_state.workflow_mode = "detect_identify"
-            st.write(f"🔍 DEBUG: Set workflow_mode to: {st.session_state.workflow_mode}")
             # Update session in Supabase
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
                 try:
@@ -908,7 +907,6 @@ if video_file and not st.session_state.get('workflow_mode'):
     with col_workflow2:
         if st.button("💳 Payment Only", use_container_width=True):
             st.session_state.workflow_mode = "payment_only"
-            st.write(f"💳 DEBUG: Set workflow_mode to: {st.session_state.workflow_mode}")
             # Update session in Supabase
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
                 try:
@@ -1188,7 +1186,6 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 # st.session_state.video_hashes[video_session_id] = video_hash
                 # save_video_hashes()
         elif st.session_state.workflow_mode == "payment_only":
-            st.write(f"💳 DEBUG: Entering payment_only mode")
             st.markdown(f"""
             <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
@@ -1203,7 +1200,6 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
-            st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
             if st.session_state.workflow_mode == "detect_identify":
                 # Check if we have existing data to identify against
                 # Fix: Check if this specific video hash has been processed before
@@ -1241,7 +1237,6 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     # st.session_state.video_hashes[video_session_id] = video_hash
                     # save_video_hashes()
             elif st.session_state.workflow_mode == "payment_only":
-                st.write(f"💳 DEBUG: Entering payment_only mode (second section)")
                 st.markdown(f"""
                 <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
@@ -1474,12 +1469,18 @@ if processed_videos:
             session_type = "Unknown"
             if workflow_mode == "payment_only":
                 session_type = "Payment Detection"
-            elif detected_count > 0 and identified_count == 0:
-                session_type = "Person Detection"
-            elif identified_count > 0 and detected_count == 0:
-                session_type = "Person Identification"
-            elif detected_count > 0 and identified_count > 0:
-                session_type = "Mixed Detection & Identification"
+            elif workflow_mode == "detect_identify":
+                if detected_count > 0 and identified_count == 0:
+                    session_type = "Person Detection"
+                elif identified_count > 0 and detected_count == 0:
+                    session_type = "Person Identification"
+                elif detected_count > 0 and identified_count > 0:
+                    session_type = "Mixed Detection & Identification"
+                elif detected_count == 0 and identified_count == 0:
+                    # Check if this session was actually processed but found no persons
+                    session_type = "Detection (No Persons Found)"
+                else:
+                    session_type = "Detection & Identification"
             else:
                 session_type = "Processed"
                 
@@ -1535,12 +1536,18 @@ if processed_videos:
             session_type = "Unknown"
             if workflow_mode == "payment_only":
                 session_type = "Payment Detection"
-            elif detected_count > 0 and identified_count == 0:
-                session_type = "Person Detection"
-            elif identified_count > 0 and detected_count == 0:
-                session_type = "Person Identification"
-            elif detected_count > 0 and identified_count > 0:
-                session_type = "Mixed Detection & Identification"
+            elif workflow_mode == "detect_identify":
+                if detected_count > 0 and identified_count == 0:
+                    session_type = "Person Detection"
+                elif identified_count > 0 and detected_count == 0:
+                    session_type = "Person Identification"
+                elif detected_count > 0 and identified_count > 0:
+                    session_type = "Mixed Detection & Identification"
+                elif detected_count == 0 and identified_count == 0:
+                    # Check if this session was actually processed but found no persons
+                    session_type = "Detection (No Persons Found)"
+                else:
+                    session_type = "Detection & Identification"
             else:
                 session_type = "Processed"
                 
@@ -1671,38 +1678,36 @@ if processed_videos:
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
-        # Create data for pie chart - show three categories
+        # Create data for pie chart - show three categories as originally requested
         if total_sessions > 0:
-            # Calculate different types of sessions for better breakdown
-            detection_only_sessions = 0
-            identification_only_sessions = 0
-            mixed_sessions = 0
+            # Calculate the metrics as originally requested
+            total_detection_videos = 0  # Videos that performed detection (including mixed)
+            total_identify_videos = 0   # Videos that performed identification (including mixed)
             
             for debug_info in session_debug_info:
                 detected = debug_info.get("detected", False)
                 identified = debug_info.get("identified", False)
+                workflow_mode = debug_info.get("workflow_mode", "unknown")
                 
-                if detected and identified:
-                    mixed_sessions += 1
-                elif detected:
-                    detection_only_sessions += 1
-                elif identified:
-                    identification_only_sessions += 1
-                else:
-                    # Uncategorized sessions
-                    detection_only_sessions += 1  # Assume detection for uncategorized
+                # Count detection videos (including mixed sessions)
+                if detected or workflow_mode == "detect_identify":
+                    total_detection_videos += 1
+                
+                # Count identification videos (including mixed sessions)
+                if identified:
+                    total_identify_videos += 1
             
-            # Create data with better breakdown
+            # Create data with the originally requested three categories
             chart_data = pd.DataFrame({
-                'Category': ['Detection Only', 'Identification Only', 'Mixed Detection & Identification'],
-                'Count': [detection_only_sessions, identification_only_sessions, mixed_sessions]
+                'Category': ['Total Detection Videos', 'Total Identify Videos', 'Total Processed Videos'],
+                'Count': [total_detection_videos, total_identify_videos, total_sessions]
             })
             
             # Filter out categories with 0 count to avoid showing empty slices
             chart_data_filtered = chart_data[chart_data['Count'] > 0].copy()
             
-            # If we have no meaningful breakdown, show the original three categories
-            if len(chart_data_filtered) == 0 or (detection_only_sessions == 0 and identification_only_sessions == 0 and mixed_sessions == 0):
+            # If we have no meaningful breakdown, show the total processed videos
+            if len(chart_data_filtered) == 0:
                 chart_data_filtered = pd.DataFrame({
                     'Category': ['Total Processed Videos'],
                     'Count': [total_sessions]
