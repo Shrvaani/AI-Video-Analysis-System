@@ -1398,38 +1398,18 @@ if processed_videos:
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
-        # Create data for pie chart - ensure we have valid data
-        if total_detected_sessions == 0 and total_identified_sessions == 0:
-            # If no specific data, show a simple breakdown
-            chart_data = pd.DataFrame({
-                'Category': ['Processed Sessions'],
-                'Count': [total_sessions]
-            })
-        elif total_detected_sessions > 0 and total_identified_sessions == 0:
-            # Only detection sessions
-            chart_data = pd.DataFrame({
-                'Category': ['Detection Sessions'],
-                'Count': [total_detected_sessions]
-            })
-        elif total_detected_sessions == 0 and total_identified_sessions > 0:
-            # Only identification sessions
-            chart_data = pd.DataFrame({
-                'Category': ['Identification Sessions'],
-                'Count': [total_identified_sessions]
-            })
-        else:
-            # Both detection and identification sessions
-            chart_data = pd.DataFrame({
-                'Category': ['Detection Sessions', 'Identification Sessions'],
-                'Count': [total_detected_sessions, total_identified_sessions]
-            })
-        
-        # Always show pie chart if we have processed videos
+        # Create data for pie chart - show three categories
         if total_sessions > 0:
+            # Create data with three categories
+            chart_data = pd.DataFrame({
+                'Category': ['Detection Videos', 'Identification Videos', 'Total Processed Videos'],
+                'Count': [total_detected_sessions, total_identified_sessions, total_sessions]
+            })
+            
             # Create pie chart with count labels
             fig = px.pie(chart_data, values='Count', names='Category', 
                         title='Session Processing Breakdown',
-                        color_discrete_sequence=['#667eea', '#764ba2'])
+                        color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
             
             # Update the pie chart to show counts instead of percentages
             fig.update_traces(textinfo='label+value', textposition='inside')
@@ -1442,11 +1422,11 @@ if processed_videos:
         # Show summary metrics
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Total Sessions", total_sessions)
+            st.metric("Detection Videos", total_detected_sessions)
         with col2:
-            st.metric("Detection Sessions", total_detected_sessions)
+            st.metric("Identification Videos", total_identified_sessions)
         with col3:
-            st.metric("Identification Sessions", total_identified_sessions)
+            st.metric("Total Processed Videos", total_sessions)
         
         # Temporary debug info to help troubleshoot
         if st.checkbox("🔍 Show Data Debug", key="temp_debug"):
