@@ -1272,7 +1272,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
             
-        elif st.session_state.workflow_mode == "payment_only":
+            elif st.session_state.workflow_mode == "payment_only":
             # Show payment detection metrics
             col_stats1, col_stats2, col_stats3 = st.columns(3)
             
@@ -1325,7 +1325,7 @@ with col_refresh1:
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
                 all_sessions = supabase_manager.get_all_sessions()
-    if all_sessions:
+                if all_sessions:
                     uploaded_videos = []
                     for session in all_sessions:
                         uploaded_videos.append({
