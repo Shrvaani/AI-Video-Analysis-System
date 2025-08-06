@@ -1433,7 +1433,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
-        del st.session_state.pending_processing
+        if 'pending_processing' in st.session_state:
+            del st.session_state.pending_processing
         # Reset session controls update flag
         if 'session_controls_updated' in st.session_state:
             del st.session_state.session_controls_updated
