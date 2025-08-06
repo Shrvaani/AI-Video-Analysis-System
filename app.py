@@ -609,7 +609,7 @@ if interrupted_state and not st.session_state.get('resume_cancelled', False):
         new_mode = st.selectbox(
             "Choose workflow mode:",
             ["detect_identify", "payment_only"],
-            index=0 if st.session_state.workflow_mode == "detect_identify" else 1,
+            index=0 if st.session_state.get('workflow_mode') == "detect_identify" else 1,
             help="Select the workflow mode for the resumed processing"
         )
         
@@ -1332,7 +1332,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             """)
         # Decide workflow based on mode and video hash
 
-        if st.session_state.workflow_mode == "detect_identify":
+        if st.session_state.get('workflow_mode') == "detect_identify":
             # Check if we have existing data to identify against
             # Fix: Check if this specific video hash has been processed before
             has_existing_data = False
@@ -1370,7 +1370,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 # Only save video hash AFTER successful processing
                 # st.session_state.video_hashes[video_session_id] = video_hash
                 # save_video_hashes()
-        elif st.session_state.workflow_mode == "payment_only":
+        elif st.session_state.get('workflow_mode') == "payment_only":
             st.markdown(f"""
             <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
@@ -1380,12 +1380,12 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             """, unsafe_allow_html=True)
             st.session_state.current_video_session = video_session_id
             # Save processing state before starting payment detection
-            save_processing_state(video_session_id, st.session_state.workflow_mode, temp_video_path, 0)
+            save_processing_state(video_session_id, st.session_state.get('workflow_mode'), temp_video_path, 0)
             detect_payments(st, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
-            if st.session_state.workflow_mode == "detect_identify":
+            if st.session_state.get('workflow_mode') == "detect_identify":
                 # Check if we have existing data to identify against
                 # Fix: Check if this specific video hash has been processed before
                 has_existing_data = False
@@ -1421,7 +1421,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     # Only save video hash AFTER successful processing
                     # st.session_state.video_hashes[video_session_id] = video_hash
                     # save_video_hashes()
-            elif st.session_state.workflow_mode == "payment_only":
+            elif st.session_state.get('workflow_mode') == "payment_only":
                 st.markdown(f"""
                 <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
@@ -1430,6 +1430,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
+                # Save processing state before starting payment detection
+                save_processing_state(video_session_id, st.session_state.get('workflow_mode'), temp_video_path, 0)
                 detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
@@ -1451,89 +1453,89 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     
     # Real-time statistics - only show when video is actively being processed
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
-        if st.session_state.workflow_mode == "detect_identify":
+        if st.session_state.get('workflow_mode') == "detect_identify":
             # Show person detection/identification metrics
             col_stats1, col_stats2, col_stats3 = st.columns(3)
         
-        with col_stats1:
-            st.metric("Total Unique Persons", "Processing...")
-        
-        with col_stats2:
-            st.metric("Persons in Current Frame", "Processing...")
-        
-        with col_stats3:
-            st.metric("Total Detections", "Processing...")
-        
-        # Summary statistics
-        st.markdown("### 📊 Processing Summary")
-        col_summary1, col_summary2, col_summary3 = st.columns(3)
-        
-        with col_summary1:
-            st.markdown("**Unique Persons:** Processing...")
-        
-        with col_summary2:
-            st.markdown("**Current Frame:** Processing...")
-        
-        with col_summary3:
-            st.markdown("**Total Detections:** Processing...")
-        
-        # Session details - only show current session
-        st.markdown("### 📋 Current Session Details")
-        current_session_id = st.session_state.get('current_video_session')
-        if current_session_id:
-            # Count detected persons in current session
-            detected_path = os.path.join(base_faces_dir, "Detected people", current_session_id)
-            identified_path = os.path.join(base_faces_dir, "Identified people", current_session_id)
-            detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
-            identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-        
+            with col_stats1:
+                st.metric("Total Unique Persons", "Processing...")
+            
+            with col_stats2:
+                st.metric("Persons in Current Frame", "Processing...")
+            
+            with col_stats3:
+                st.metric("Total Detections", "Processing...")
+            
+            # Summary statistics
+            st.markdown("### 📊 Processing Summary")
+            col_summary1, col_summary2, col_summary3 = st.columns(3)
+            
+            with col_summary1:
+                st.markdown("**Unique Persons:** Processing...")
+            
+            with col_summary2:
+                st.markdown("**Current Frame:** Processing...")
+            
+            with col_summary3:
+                st.markdown("**Total Detections:** Processing...")
+            
+            # Session details - only show current session
+            st.markdown("### 📋 Current Session Details")
+            current_session_id = st.session_state.get('current_video_session')
+            if current_session_id:
+                # Count detected persons in current session
+                detected_path = os.path.join(base_faces_dir, "Detected people", current_session_id)
+                identified_path = os.path.join(base_faces_dir, "Identified people", current_session_id)
+                detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
+                identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
+            
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Current Session {current_session_id}</h5>
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                
+        elif st.session_state.get('workflow_mode') == "payment_only":
+            # Show payment detection metrics
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
+            
+            with col_stats1:
+                st.metric("Cash Payments", "Processing...")
+            
+            with col_stats2:
+                st.metric("Card Payments", "Processing...")
+            
+            with col_stats3:
+                st.metric("Total Payments", "Processing...")
+            
+            # Summary statistics
+            st.markdown("### 💳 Payment Detection Summary")
+            col_summary1, col_summary2, col_summary3 = st.columns(3)
+            
+            with col_summary1:
+                st.markdown("**Cash Payments:** Processing...")
+            
+            with col_summary2:
+                st.markdown("**Card Payments:** Processing...")
+            
+            with col_summary3:
+                st.markdown("**Total Payments:** Processing...")
+            
+            # Session details for payment mode
+            st.markdown("### 📋 Payment Session Details")
+            current_session_id = st.session_state.get('current_video_session')
+            
             st.markdown(f"""
             <div class="session-card">
-                <h5>📹 Current Session {current_session_id}</h5>
-                <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                <h5>💳 Payment Session {current_session_id}</h5>
+                <p><strong>💰 Cash Payments:</strong> Processing...</p>
+                <p><strong>💳 Card Payments:</strong> Processing...</p>
                 <span class="status-indicator status-active"></span>Processing...
             </div>
             """, unsafe_allow_html=True)
-            
-    elif st.session_state.workflow_mode == "payment_only":
-        # Show payment detection metrics
-        col_stats1, col_stats2, col_stats3 = st.columns(3)
-        
-        with col_stats1:
-            st.metric("Cash Payments", "Processing...")
-        
-        with col_stats2:
-            st.metric("Card Payments", "Processing...")
-        
-        with col_stats3:
-            st.metric("Total Payments", "Processing...")
-        
-        # Summary statistics
-        st.markdown("### 💳 Payment Detection Summary")
-        col_summary1, col_summary2, col_summary3 = st.columns(3)
-        
-        with col_summary1:
-            st.markdown("**Cash Payments:** Processing...")
-        
-        with col_summary2:
-            st.markdown("**Card Payments:** Processing...")
-        
-        with col_summary3:
-            st.markdown("**Total Payments:** Processing...")
-        
-        # Session details for payment mode
-        st.markdown("### 📋 Payment Session Details")
-        current_session_id = st.session_state.get('current_video_session')
-        
-        st.markdown(f"""
-        <div class="session-card">
-            <h5>💳 Payment Session {current_session_id}</h5>
-            <p><strong>💰 Cash Payments:</strong> Processing...</p>
-            <p><strong>💳 Card Payments:</strong> Processing...</p>
-            <span class="status-indicator status-active"></span>Processing...
-        </div>
-        """, unsafe_allow_html=True)
 else:
     # No active processing - show minimal interface
     pass
