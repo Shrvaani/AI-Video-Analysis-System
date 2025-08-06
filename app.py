@@ -565,7 +565,9 @@ if 'uploaded_videos' not in st.session_state:
                     uploaded_videos.append({
                         "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
                         "session_id": session['session_id'],
-                        "hash": session['video_hash']
+                        "hash": session['video_hash'],
+                        "workflow_mode": session.get('workflow_mode', 'unknown'),
+                        "created_at": session.get('created_at', 'unknown')
                     })
                 st.session_state.uploaded_videos = uploaded_videos
                 st.info(f"📊 Loaded {len(uploaded_videos)} existing sessions from cloud storage")
@@ -610,7 +612,10 @@ def get_processed_videos():
                 try:
                     # Check if there's any data in Supabase for this session
                     persons_data = supabase_manager.get_persons_by_session(session_id)
-                    if persons_data and len(persons_data) > 0:
+                    payment_data = supabase_manager.get_payment_results(session_id)
+                    
+                    # Consider processed if there are persons OR payment data
+                    if (persons_data and len(persons_data) > 0) or payment_data:
                         has_processed_data = True
                 except Exception:
                     pass
@@ -623,6 +628,11 @@ def get_processed_videos():
                     has_processed_data = True
                 elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
                     has_processed_data = True
+            
+            # If still no processed data found, consider it processed if it exists in uploaded_videos
+            # (this means it was uploaded and processed, even if data was cleared)
+            if not has_processed_data:
+                has_processed_data = True
             
             if has_processed_data:
                 processed_videos.append(video_info)
@@ -695,30 +705,66 @@ else:
 
 # Add refresh button for database data
 if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-    if st.button("🔄 Refresh Data from Database", key="refresh_db_data"):
-        try:
-            # Reload sessions from Supabase
-            all_sessions = supabase_manager.get_all_sessions()
-            if all_sessions:
-                # Convert Supabase sessions to uploaded_videos format
-                uploaded_videos = []
-                for session in all_sessions:
-                    uploaded_videos.append({
-                        "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
-                        "session_id": session['session_id'],
-                        "hash": session['video_hash']
-                    })
-                st.session_state.uploaded_videos = uploaded_videos
-                st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
-                # Also update video_hashes to include the loaded sessions
-                for session in all_sessions:
-                    st.session_state.video_hashes[session['session_id']] = session['video_hash']
-            else:
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 Refresh Data from Database", key="refresh_db_data"):
+            try:
+                # Reload sessions from Supabase
+                all_sessions = supabase_manager.get_all_sessions()
+                if all_sessions:
+                    # Convert Supabase sessions to uploaded_videos format
+                    uploaded_videos = []
+                    for session in all_sessions:
+                        uploaded_videos.append({
+                            "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
+                            "session_id": session['session_id'],
+                            "hash": session['video_hash'],
+                            "workflow_mode": session.get('workflow_mode', 'unknown'),
+                            "created_at": session.get('created_at', 'unknown')
+                        })
+                    st.session_state.uploaded_videos = uploaded_videos
+                    st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
+                    # Also update video_hashes to include the loaded sessions
+                    for session in all_sessions:
+                        st.session_state.video_hashes[session['session_id']] = session['video_hash']
+                else:
+                    st.session_state.uploaded_videos = []
+                    st.info("ℹ️ No sessions found in database")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Failed to refresh data: {e}")
+    
+    with col2:
+        if st.button("🔄 Force Reload All Data", key="force_refresh"):
+            try:
+                # Clear session state and force reload
                 st.session_state.uploaded_videos = []
-                st.info("ℹ️ No sessions found in database")
-            st.rerun()
-        except Exception as e:
-            st.error(f"❌ Failed to refresh data: {e}")
+                st.session_state.video_hashes = {}
+                
+                # Reload sessions from Supabase
+                all_sessions = supabase_manager.get_all_sessions()
+                if all_sessions:
+                    # Convert Supabase sessions to uploaded_videos format
+                    uploaded_videos = []
+                    for session in all_sessions:
+                        uploaded_videos.append({
+                            "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
+                            "session_id": session['session_id'],
+                            "hash": session['video_hash'],
+                            "workflow_mode": session.get('workflow_mode', 'unknown'),
+                            "created_at": session.get('created_at', 'unknown')
+                        })
+                    st.session_state.uploaded_videos = uploaded_videos
+                    st.success(f"✅ Force reloaded {len(uploaded_videos)} sessions from cloud storage")
+                    # Also update video_hashes to include the loaded sessions
+                    for session in all_sessions:
+                        st.session_state.video_hashes[session['session_id']] = session['video_hash']
+                else:
+                    st.session_state.uploaded_videos = []
+                    st.info("ℹ️ No sessions found in database")
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Failed to force reload data: {e}")
 
 # Main content area with right sidebar
 col1, spacer, col2 = st.columns([1, 0.1, 1])
