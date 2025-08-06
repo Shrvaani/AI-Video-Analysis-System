@@ -87,16 +87,14 @@ def get_person_count(person_id, video_session_id, base_faces_dir):
 
 # Main detection function
 def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, video_session_id):
-    st.subheader("Detect Mode")
-    st.markdown("Upload a video to detect and assign IDs to persons.")
+    st.subheader(f"Person Detection in Video Session {video_session_id}: {os.path.basename(video_path)}")
+    st.markdown("Detecting and tracking persons in the video.")
 
-    with st.sidebar:
-        max_distance = st.slider("Max Proximity Distance (pixels)", 10, 100, 50, 5,
-                                help="Max distance for tracking the same person across frames")
-        max_frame_gap = st.slider("Max Frame Gap", 10, 100, 30, 5,
-                                 help="Max frames to consider for re-identification")
+    # Initialize session state variables
+    if 'stop_processing' not in st.session_state:
+        st.session_state.stop_processing = False
 
-    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing"):
+    if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_button_{video_session_id}"):
         st.session_state.stop_processing = True
         st.session_state.current_video_session = None
         st.success("🛑 Video processing stopped. You can now upload a new video.")

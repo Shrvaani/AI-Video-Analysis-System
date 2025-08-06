@@ -102,13 +102,13 @@ def detect_payments(st, video_path, video_session_id):
         # Apply non-maximum suppression (NMS) manually
         if all_dets:
             try:
-                boxes = [[int(x1), int(y1), int(x2 - x1), int(y2 - y1)] for _, x1, y1, x2, y2, _ in all_dets]
-                scores = [float(confidence) for _, _, _, _, _, confidence in all_dets]
-                classes = [int(cls_id) for cls_id, _, _, _, _, _ in all_dets]
+            boxes = [[int(x1), int(y1), int(x2 - x1), int(y2 - y1)] for _, x1, y1, x2, y2, _ in all_dets]
+            scores = [float(confidence) for _, _, _, _, _, confidence in all_dets]
+            classes = [int(cls_id) for cls_id, _, _, _, _, _ in all_dets]
                 indices = cv2.dnn.NMSBoxes(boxes, scores, 0.4, 0.5)  # Adjusted NMS parameters
-                if len(indices) > 0:
-                    all_dets = [all_dets[i] for i in indices.flatten()]
-                else:
+            if len(indices) > 0:
+                all_dets = [all_dets[i] for i in indices.flatten()]
+            else:
                     all_dets = []
             except Exception as e:
                 st.warning(f"Warning: Error during NMS on frame {current_frame}: {e}")
@@ -116,15 +116,15 @@ def detect_payments(st, video_path, video_session_id):
 
         for det in all_dets:
             try:
-                cls_id, x1, y1, x2, y2, confidence = map(float, det)
-                cls_id = int(cls_id)
-                x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
+            cls_id, x1, y1, x2, y2, confidence = map(float, det)
+            cls_id = int(cls_id)
+            x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
 
                 # Only process cash and card detections with high confidence
                 if cls_id not in [CLASS_IDS["cash"], CLASS_IDS["card"]] or confidence < 0.4:
-                    continue
+                continue
 
-                center = (x1 + x2) // 2, (y1 + y2) // 2
+            center = (x1 + x2) // 2, (y1 + y2) // 2
                 center_key = f"{center[0]}_{center[1]}"
 
                 # Improved tracking logic to prevent duplicate counting
@@ -134,33 +134,33 @@ def detect_payments(st, video_path, video_session_id):
                     if (prev_cls_id == cls_id and 
                         current_frame - prev_frame < 15 and  # Reduced frame gap
                         abs(confidence - prev_confidence) < 0.1):  # Similar confidence
-                        continue
-                
+                    continue
+
                 tracked_centroids[center_key] = (cls_id, current_frame, confidence)
 
                 # Determine payment type based on class ID
-                if cls_id == CLASS_IDS["cash"]:
+            if cls_id == CLASS_IDS["cash"]:
                     payment_label = "Cash Payment"
                     color = (0, 165, 255)  # Orange
                     if not first_cash_detected:
                         first_cash_detected = True
                         if payment_type is None:
                             payment_type = "Cash Payment"
-                    cash_payments += 1
+                cash_payments += 1
                     payment_events.append({
                         "type": "cash",
                         "frame": current_frame,
                         "confidence": confidence,
                         "center": center
                     })
-                elif cls_id == CLASS_IDS["card"]:
+            elif cls_id == CLASS_IDS["card"]:
                     payment_label = "Card Payment"
                     color = (255, 0, 255)  # Purple
                     if not first_card_detected:
                         first_card_detected = True
                         if payment_type is None:
                             payment_type = "Card Payment"
-                    card_payments += 1
+                card_payments += 1
                     payment_events.append({
                         "type": "card",
                         "frame": current_frame,
@@ -169,8 +169,8 @@ def detect_payments(st, video_path, video_session_id):
                     })
 
                 label = f"{payment_label} (Conf: {confidence:.2f})"
-                cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
-                cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             except Exception as e:
                 st.warning(f"Warning: Error processing detection on frame {current_frame}: {e}")
                 continue
@@ -178,8 +178,8 @@ def detect_payments(st, video_path, video_session_id):
         # Display frame every 10 frames to avoid overwhelming the UI
         if frame_counter % 10 == 0:
             try:
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                stframe.image(frame_rgb, channels="RGB", use_container_width=True)
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        stframe.image(frame_rgb, channels="RGB", use_container_width=True)
                 
                 # Update real-time metrics
                 cash_display.metric("Cash Payments", cash_payments)
@@ -232,11 +232,11 @@ def detect_payments(st, video_path, video_session_id):
     try:
         csv_filename = f"payment_summary_{video_session_id}.csv"
         with open(csv_filename, "w", newline="") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(["Metric", "Count"])
-            writer.writerow(["Total Payments", total_payments])
-            writer.writerow(["Cash Payments", cash_payments])
-            writer.writerow(["Card Payments", card_payments])
+        writer = csv.writer(csvfile)
+        writer.writerow(["Metric", "Count"])
+        writer.writerow(["Total Payments", total_payments])
+        writer.writerow(["Cash Payments", cash_payments])
+        writer.writerow(["Card Payments", card_payments])
         st.success(f"📊 Payment summary saved to {csv_filename}")
     except Exception as e:
         st.warning(f"Warning: Could not save payment summary: {e}")
