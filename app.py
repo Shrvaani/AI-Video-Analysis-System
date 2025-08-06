@@ -633,11 +633,8 @@ def get_processed_videos():
                 elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
                     has_processed_data = True
             
-            # If still no processed data found, consider it processed if it exists in uploaded_videos
-            # (this means it was uploaded and processed, even if data was cleared)
-            if not has_processed_data:
-                has_processed_data = True
-            
+            # Only consider it processed if we actually found data
+            # Remove the fallback that considered all uploaded videos as processed
             if has_processed_data:
                 processed_videos.append(video_info)
     
@@ -1120,7 +1117,21 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
         st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
         if st.session_state.workflow_mode == "detect_identify":
             # Check if we have existing data to identify against
-            has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+            # Fix: Check if this specific video hash has been processed before
+            has_existing_data = False
+            
+            # Check if this exact video hash exists in our processed videos
+            if video_hash in st.session_state.video_hashes.values():
+                # This video has been processed before, check if we have person data
+                has_existing_data = len(existing_persons) > 0
+            else:
+                # This is a new video, should always go to detection
+                has_existing_data = False
+            
+            st.write(f"🔍 DEBUG: Video hash: {video_hash}")
+            st.write(f"🔍 DEBUG: Existing persons: {len(existing_persons)}")
+            st.write(f"🔍 DEBUG: Video hash in processed: {video_hash in st.session_state.video_hashes.values()}")
+            st.write(f"🔍 DEBUG: Has existing data: {has_existing_data}")
             
             if has_existing_data:
                 st.markdown(f"""
@@ -1142,8 +1153,9 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
                 detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
+                # Only save video hash AFTER successful processing
+                # st.session_state.video_hashes[video_session_id] = video_hash
+                # save_video_hashes()
         elif st.session_state.workflow_mode == "payment_only":
             st.write(f"💳 DEBUG: Entering payment_only mode")
             st.markdown(f"""
@@ -1163,7 +1175,16 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
             if st.session_state.workflow_mode == "detect_identify":
                 # Check if we have existing data to identify against
-                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                # Fix: Check if this specific video hash has been processed before
+                has_existing_data = False
+                
+                # Check if this exact video hash exists in our processed videos
+                if video_hash in st.session_state.video_hashes.values():
+                    # This video has been processed before, check if we have person data
+                    has_existing_data = len(existing_persons) > 0
+                else:
+                    # This is a new video, should always go to detection
+                    has_existing_data = False
                 
                 if has_existing_data:
                     st.markdown(f"""
@@ -1185,8 +1206,9 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     """, unsafe_allow_html=True)
                     st.session_state.current_video_session = video_session_id
                     detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                    st.session_state.video_hashes[video_session_id] = video_hash
-                    save_video_hashes()
+                    # Only save video hash AFTER successful processing
+                    # st.session_state.video_hashes[video_session_id] = video_hash
+                    # save_video_hashes()
             elif st.session_state.workflow_mode == "payment_only":
                 st.write(f"💳 DEBUG: Entering payment_only mode (second section)")
                 st.markdown(f"""

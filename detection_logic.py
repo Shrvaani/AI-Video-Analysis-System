@@ -295,6 +295,29 @@ known_faces/
 {chr(10).join([f'    ├── {pid}/' + chr(10) + f'    │   ├── first_detection.jpg' + chr(10) + f'    │   └── frame_*.jpg ({data["frame_count"]} frames)' for pid, data in person_registry.items()])}
                 """)
         
+        # Save video hash after successful processing
+        if 'video_hashes' in st.session_state:
+            # Calculate video hash from the processed video path
+            try:
+                import hashlib
+                video_hash = None
+                with open(video_path, 'rb') as f:
+                    hasher = hashlib.md5()
+                    while chunk := f.read(8192):
+                        hasher.update(chunk)
+                    video_hash = hasher.hexdigest()
+                
+                if video_hash:
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    # Save to file
+                    hash_file = "video_hashes.json"
+                    import json
+                    with open(hash_file, 'w') as f:
+                        json.dump(st.session_state.video_hashes, f)
+                    st.info(f"💾 Video hash saved for session {video_session_id}")
+            except Exception as e:
+                st.warning(f"⚠️ Could not save video hash: {e}")
+        
         if os.path.exists(video_session_dir):
             shutil.rmtree(video_session_dir)
         
