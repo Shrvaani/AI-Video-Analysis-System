@@ -1130,44 +1130,44 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
             
-            elif st.session_state.workflow_mode == "payment_only":
-                # Show payment detection metrics
-                col_stats1, col_stats2, col_stats3 = st.columns(3)
-                
-                with col_stats1:
-                    st.metric("Cash Payments", "Processing...")
-                
-                with col_stats2:
-                    st.metric("Card Payments", "Processing...")
-                
-                with col_stats3:
-                    st.metric("Total Payments", "Processing...")
-                
-                # Summary statistics
-                st.markdown("### 💳 Payment Detection Summary")
-                col_summary1, col_summary2, col_summary3 = st.columns(3)
-                
-                with col_summary1:
-                    st.markdown("**Cash Payments:** Processing...")
-                
-                with col_summary2:
-                    st.markdown("**Card Payments:** Processing...")
-                
-                with col_summary3:
-                    st.markdown("**Total Payments:** Processing...")
-                
-                # Session details for payment mode
-                st.markdown("### 📋 Payment Session Details")
-                current_session_id = st.session_state.get('current_video_session')
-                
-                st.markdown(f"""
-                <div class="session-card">
-                    <h5>💳 Payment Session {current_session_id}</h5>
-                    <p><strong>💰 Cash Payments:</strong> Processing...</p>
-                    <p><strong>💳 Card Payments:</strong> Processing...</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
+        elif st.session_state.workflow_mode == "payment_only":
+            # Show payment detection metrics
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
+            
+            with col_stats1:
+                st.metric("Cash Payments", "Processing...")
+            
+            with col_stats2:
+                st.metric("Card Payments", "Processing...")
+            
+            with col_stats3:
+                st.metric("Total Payments", "Processing...")
+            
+            # Summary statistics
+            st.markdown("### 💳 Payment Detection Summary")
+            col_summary1, col_summary2, col_summary3 = st.columns(3)
+            
+            with col_summary1:
+                st.markdown("**Cash Payments:** Processing...")
+            
+            with col_summary2:
+                st.markdown("**Card Payments:** Processing...")
+            
+            with col_summary3:
+                st.markdown("**Total Payments:** Processing...")
+            
+            # Session details for payment mode
+            st.markdown("### 📋 Payment Session Details")
+            current_session_id = st.session_state.get('current_video_session')
+            
+            st.markdown(f"""
+            <div class="session-card">
+                <h5>💳 Payment Session {current_session_id}</h5>
+                <p><strong>💰 Cash Payments:</strong> Processing...</p>
+                <p><strong>💳 Card Payments:</strong> Processing...</p>
+                <span class="status-indicator status-active"></span>Processing...
+            </div>
+            """, unsafe_allow_html=True)
 else:
     # No active processing - show minimal interface
     pass
@@ -1395,16 +1395,16 @@ if processed_videos:
             
             # Create pie chart with count labels
             fig = px.pie(chart_data, values='Count', names='Category', 
-                            title='Session Processing Breakdown',
-                            color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
+                        title='Session Processing Breakdown',
+                        color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
             
             # Update the pie chart to show counts instead of percentages
             fig.update_traces(textinfo='label+value', textposition='inside')
             
             # Display pie chart
             st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("📊 No processing data available yet. Process some videos to see statistics.")
+        else:
+            st.info("📊 No processing data available yet. Process some videos to see statistics.")
 
         # Show summary metrics
         col1, col2, col3 = st.columns(3)
@@ -1421,7 +1421,8 @@ if processed_videos:
             st.write(f"- Total sessions: {total_sessions}")
             st.write(f"- Detection sessions: {total_detected_sessions}")
             st.write(f"- Identification sessions: {total_identified_sessions}")
-            st.write(f"- Chart data: {chart_data.to_dict('records')}")
+            if total_sessions > 0:
+                st.write(f"- Chart data: {chart_data.to_dict('records')}")
             st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
             st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
             
