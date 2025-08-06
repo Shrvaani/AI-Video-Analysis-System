@@ -557,9 +557,39 @@ if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
     try:
         all_sessions = supabase_manager.get_all_sessions()
         if all_sessions:
-            # Convert Supabase sessions to uploaded_videos format
-            uploaded_videos = []
+            # Only load sessions that have actually been processed (have person or payment data)
+            processed_sessions = []
             for session in all_sessions:
+                session_id = session['session_id']
+                has_processed_data = False
+                
+                # Check if this session has actual processed data
+                try:
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    payment_data = supabase_manager.get_payment_results(session_id)
+                    
+                    # Consider processed if there are persons OR payment data
+                    if (persons_data and len(persons_data) > 0) or payment_data:
+                        has_processed_data = True
+                except Exception:
+                    pass
+                
+                # Also check local file system as backup
+                if not has_processed_data:
+                    detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                    identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                    if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                        has_processed_data = True
+                    elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                        has_processed_data = True
+                
+                # Only include sessions that have actually been processed
+                if has_processed_data:
+                    processed_sessions.append(session)
+            
+            # Convert processed sessions to uploaded_videos format
+            uploaded_videos = []
+            for session in processed_sessions:
                 uploaded_videos.append({
                     "video_path": f"supabase_session_{session['session_id']}",  # Placeholder path
                     "session_id": session['session_id'],
@@ -568,14 +598,15 @@ if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                     "created_at": session.get('created_at', 'unknown')
                 })
             st.session_state.uploaded_videos = uploaded_videos
-            # Also update video_hashes to include the loaded sessions
-            for session in all_sessions:
+            
+            # Also update video_hashes to include the processed sessions
+            for session in processed_sessions:
                 st.session_state.video_hashes[session['session_id']] = session['video_hash']
             
             # Show notification only if this is a fresh load (not already loaded)
             if 'data_loaded_notification' not in st.session_state:
                 st.session_state.data_loaded_notification = True
-                st.success(f"📊 Automatically loaded {len(uploaded_videos)} sessions from cloud storage")
+                st.success(f"📊 Automatically loaded {len(uploaded_videos)} processed sessions from cloud storage")
         else:
             st.session_state.uploaded_videos = []
     except Exception as e:
@@ -1338,18 +1369,56 @@ with col_refresh1:
             try:
                 all_sessions = supabase_manager.get_all_sessions()
                 if all_sessions:
-                    uploaded_videos = []
+                    # Only load sessions that have actually been processed
+                    processed_sessions = []
                     for session in all_sessions:
+                        session_id = session['session_id']
+                        has_processed_data = False
+                        
+                        # Check if this session has actual processed data
+                        try:
+                            persons_data = supabase_manager.get_persons_by_session(session_id)
+                            payment_data = supabase_manager.get_payment_results(session_id)
+                            
+                            # Consider processed if there are persons OR payment data
+                            if (persons_data and len(persons_data) > 0) or payment_data:
+                                has_processed_data = True
+                        except Exception:
+                            pass
+                        
+                        # Also check local file system as backup
+                        if not has_processed_data:
+                            detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                            identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+                            if os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0:
+                                has_processed_data = True
+                            elif os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0:
+                                has_processed_data = True
+                        
+                        # Only include sessions that have actually been processed
+                        if has_processed_data:
+                            processed_sessions.append(session)
+                    
+                    # Convert processed sessions to uploaded_videos format
+                    uploaded_videos = []
+                    for session in processed_sessions:
                         uploaded_videos.append({
                             "video_path": f"supabase_session_{session['session_id']}",
                             "session_id": session['session_id'],
-                            "hash": session['video_hash']
+                            "hash": session['video_hash'],
+                            "workflow_mode": session.get('workflow_mode', 'unknown'),
+                            "created_at": session.get('created_at', 'unknown')
                         })
                     st.session_state.uploaded_videos = uploaded_videos
-                    st.success(f"✅ Refreshed {len(uploaded_videos)} sessions from cloud storage")
+                    
+                    # Update video_hashes
+                    for session in processed_sessions:
+                        st.session_state.video_hashes[session['session_id']] = session['video_hash']
+                    
+                    st.success(f"✅ Refreshed {len(uploaded_videos)} processed sessions from cloud storage")
                     st.rerun()
                 else:
-                    st.info("📋 No sessions found in cloud storage")
+                    st.info("📋 No processed sessions found in cloud storage")
             except Exception as e:
                 st.error(f"❌ Failed to refresh session data: {e}")
         else:
@@ -1370,10 +1439,12 @@ if processed_videos:
             video_info = processed_videos[row]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
+            workflow_mode = video_info.get('workflow_mode', 'unknown')
             
             # Get person counts from Supabase if available, otherwise from local files
             detected_count = 0
             identified_count = 0
+            payment_count = 0
             
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                 try:
@@ -1381,6 +1452,11 @@ if processed_videos:
                     persons_data = supabase_manager.get_persons_by_session(session_id)
                     detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
                     identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                    
+                    # Get payment data
+                    payment_data = supabase_manager.get_payment_results(session_id)
+                    if payment_data:
+                        payment_count = payment_data.get('total_payments', 0)
                 except Exception as e:
                     # Fallback to local file system
                     detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
@@ -1394,13 +1470,27 @@ if processed_videos:
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
                 
+            # Determine session type based on workflow mode and data
+            session_type = "Unknown"
+            if workflow_mode == "payment_only":
+                session_type = "Payment Detection"
+            elif detected_count > 0 and identified_count == 0:
+                session_type = "Person Detection"
+            elif identified_count > 0 and detected_count == 0:
+                session_type = "Person Identification"
+            elif detected_count > 0 and identified_count > 0:
+                session_type = "Mixed Detection & Identification"
+            else:
+                session_type = "Processed"
+                
             with col_left:
                 st.markdown(f"""
                 <div class="session-card">
                     <h5>📹 Session {session_id}</h5>
-                    <p><strong>📁 File:</strong> {video_name}</p>
+                    <p><strong>📁 Type:</strong> {session_type}</p>
                     <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
                     <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    {f'<p><strong>💳 Payments:</strong> {payment_count}</p>' if payment_count > 0 else ''}
                     <span class="status-indicator status-inactive"></span>Completed
                 </div>
                 """, unsafe_allow_html=True)
@@ -1410,10 +1500,12 @@ if processed_videos:
             video_info = processed_videos[row + 1]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
+            workflow_mode = video_info.get('workflow_mode', 'unknown')
             
             # Get person counts from Supabase if available, otherwise from local files
             detected_count = 0
             identified_count = 0
+            payment_count = 0
             
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                 try:
@@ -1421,6 +1513,11 @@ if processed_videos:
                     persons_data = supabase_manager.get_persons_by_session(session_id)
                     detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
                     identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                    
+                    # Get payment data
+                    payment_data = supabase_manager.get_payment_results(session_id)
+                    if payment_data:
+                        payment_count = payment_data.get('total_payments', 0)
                 except Exception as e:
                     # Fallback to local file system
                     detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
@@ -1434,13 +1531,27 @@ if processed_videos:
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
                 
+            # Determine session type based on workflow mode and data
+            session_type = "Unknown"
+            if workflow_mode == "payment_only":
+                session_type = "Payment Detection"
+            elif detected_count > 0 and identified_count == 0:
+                session_type = "Person Detection"
+            elif identified_count > 0 and detected_count == 0:
+                session_type = "Person Identification"
+            elif detected_count > 0 and identified_count > 0:
+                session_type = "Mixed Detection & Identification"
+            else:
+                session_type = "Processed"
+                
             with col_right:
                 st.markdown(f"""
                 <div class="session-card">
                     <h5>📹 Session {session_id}</h5>
-                    <p><strong>📁 File:</strong> {video_name}</p>
+                    <p><strong>📁 Type:</strong> {session_type}</p>
                     <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
                     <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    {f'<p><strong>💳 Payments:</strong> {payment_count}</p>' if payment_count > 0 else ''}
                     <span class="status-indicator status-inactive"></span>Completed
                 </div>
                 """, unsafe_allow_html=True)
