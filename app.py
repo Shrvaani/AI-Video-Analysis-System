@@ -585,12 +585,12 @@ if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
 else:
     if 'uploaded_videos' not in st.session_state:
         st.session_state.uploaded_videos = []
-if 'person_count' not in st.session_state:
-    st.session_state.person_count = {}
-if 'workflow_mode' not in st.session_state:
-    st.session_state.workflow_mode = None  # Options: 'detect_identify' or 'payment_only'
-if 'stop_processing' not in st.session_state:
-    st.session_state.stop_processing = False
+    if 'person_count' not in st.session_state:
+        st.session_state.person_count = {}
+    if 'workflow_mode' not in st.session_state:
+        st.session_state.workflow_mode = None  # Options: 'detect_identify' or 'payment_only'
+    if 'stop_processing' not in st.session_state:
+        st.session_state.stop_processing = False
 
 # Save video_hashes to file when updated
 def save_video_hashes():
@@ -1133,15 +1133,15 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
             
             if has_existing_data:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
-                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                        <span class="status-indicator status-active"></span>Processing...
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.session_state.current_video_session = video_session_id
-                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                st.markdown(f"""
+                <div class="session-card">
+                    <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.current_video_session = video_session_id
+                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
             else:
                 st.markdown(f"""
                 <div class="session-card">
@@ -1154,19 +1154,19 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
                 st.session_state.video_hashes[video_session_id] = video_hash
                 save_video_hashes()
-            elif st.session_state.workflow_mode == "payment_only":
-                st.write(f"💳 DEBUG: Entering payment_only mode")
-                st.markdown(f"""
-                <div class="session-card">
+        elif st.session_state.workflow_mode == "payment_only":
+            st.write(f"💳 DEBUG: Entering payment_only mode")
+            st.markdown(f"""
+            <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                # Save processing state before starting payment detection
-                save_processing_state(video_session_id, st.session_state.workflow_mode, temp_video_path, 0)
-                detect_payments(st, temp_video_path, video_session_id)
+                <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                <span class="status-indicator status-active"></span>Processing...
+            </div>
+            """, unsafe_allow_html=True)
+            st.session_state.current_video_session = video_session_id
+            # Save processing state before starting payment detection
+            save_processing_state(video_session_id, st.session_state.workflow_mode, temp_video_path, 0)
+            detect_payments(st, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
@@ -1197,7 +1197,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
                 st.session_state.video_hashes[video_session_id] = video_hash
                 save_video_hashes()
-            elif st.session_state.workflow_mode == "payment_only":
+        elif st.session_state.workflow_mode == "payment_only":
                 st.write(f"💳 DEBUG: Entering payment_only mode (second section)")
                 st.markdown(f"""
                 <div class="session-card">
@@ -1229,7 +1229,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
         if st.session_state.workflow_mode == "detect_identify":
             # Show person detection/identification metrics
-            col_stats1, col_stats2, col_stats3 = st.columns(3)
+        col_stats1, col_stats2, col_stats3 = st.columns(3)
         
         with col_stats1:
             st.metric("Total Unique Persons", "Processing...")
