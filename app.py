@@ -673,7 +673,13 @@ with col1:
                 
                 # Now save video file after session is created
                 if video_content_for_supabase:
-                    if supabase_manager.save_video_file(video_session_id, video_file.name, video_content_for_supabase):
+                    if supabase_manager.save_video_file(
+                        video_session_id, 
+                        video_file.name, 
+                        video_content_for_supabase,
+                        video_hash=video_hash,
+                        workflow_mode=st.session_state.get('workflow_mode', 'detect_identify')
+                    ):
                         st.success("☁️ Video saved to cloud storage")
                     else:
                         st.warning("⚠️ Failed to save video to cloud storage, using local storage only")
@@ -968,12 +974,12 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             The app will attempt to run but may show error messages for unavailable features.
             """)
         # Decide workflow based on mode and video hash
-        st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
+            st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
         if st.session_state.workflow_mode == "detect_identify":
-            # Check if we have existing data to identify against
-            has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
-            
-            if has_existing_data:
+                # Check if we have existing data to identify against
+                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                
+                if has_existing_data:
                 st.markdown(f"""
                 <div class="session-card">
                     <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
@@ -995,17 +1001,17 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
                 st.session_state.video_hashes[video_session_id] = video_hash
                 save_video_hashes()
-        elif st.session_state.workflow_mode == "payment_only":
-            st.write(f"💳 DEBUG: Entering payment_only mode")
+            elif st.session_state.workflow_mode == "payment_only":
+                st.write(f"💳 DEBUG: Entering payment_only mode")
             st.markdown(f"""
             <div class="session-card">
-                <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
+                    <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
                 <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
                 <span class="status-indicator status-active"></span>Processing...
             </div>
             """, unsafe_allow_html=True)
             st.session_state.current_video_session = video_session_id
-            detect_payments(st, temp_video_path, video_session_id)
+                detect_payments(st, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
@@ -1171,7 +1177,7 @@ with col_refresh1:
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
                 all_sessions = supabase_manager.get_all_sessions()
-                if all_sessions:
+    if all_sessions:
                     uploaded_videos = []
                     for session in all_sessions:
                         uploaded_videos.append({
@@ -1273,7 +1279,11 @@ if processed_videos:
                     </div>
                     """, unsafe_allow_html=True)
     else:
-        st.info("📋 No previously processed sessions found.")
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    if uploaded_videos:
+        st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
+else:
+    st.info("📋 No previously processed sessions found.")
 
 # Fourth Half - Total Statistics Overview
 st.markdown("---")  # Add a divider
@@ -1330,7 +1340,7 @@ if processed_videos:
         # Create data for pie chart - ensure we have valid data
         if total_detected_sessions == 0 and total_identified_sessions == 0:
             # If no specific data, show a simple breakdown
-            chart_data = pd.DataFrame({
+        chart_data = pd.DataFrame({
                 'Category': ['Processed Sessions'],
                 'Count': [total_sessions]
             })
@@ -1343,22 +1353,22 @@ if processed_videos:
         
         # Always show pie chart if we have processed videos
         if total_sessions > 0:
-            # Create pie chart with count labels
-            fig = px.pie(chart_data, values='Count', names='Category', 
-                            title='Session Processing Breakdown',
-                            color_discrete_sequence=['#667eea', '#764ba2'])
-            
-            # Update the pie chart to show counts instead of percentages
-            fig.update_traces(textinfo='label+value', textposition='inside')
-            
-            # Display pie chart
+        # Create pie chart with count labels
+        fig = px.pie(chart_data, values='Count', names='Category', 
+                        title='Session Processing Breakdown',
+                        color_discrete_sequence=['#667eea', '#764ba2'])
+        
+        # Update the pie chart to show counts instead of percentages
+        fig.update_traces(textinfo='label+value', textposition='inside')
+        
+        # Display pie chart
             st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("📊 No processing data available yet. Process some videos to see statistics.")
+            st.info("📊 No processing data available yet. Process some videos to see statistics.")
 
         # Show summary metrics
         col1, col2, col3 = st.columns(3)
-        with col1:
+with col1:
             st.metric("Total Sessions", total_sessions)
         with col2:
             st.metric("Detection Sessions", total_detected_sessions)
@@ -1394,19 +1404,19 @@ if processed_videos:
                         st.write(f"  - Identified persons: {identified_count}")
                     except Exception as e:
                         st.write(f"  - Error getting data: {e}")
-        else:
-            # Fallback: display statistics as text when pandas/plotly not available
-            st.markdown("### 📊 Statistics Summary")
-            stat_col1, stat_col2, stat_col3 = st.columns(3)
-            with stat_col1:
-                st.metric("Total Sessions", total_sessions)
-            with stat_col2:
-                st.metric("Detection Sessions", total_detected_sessions)
-            with stat_col3:
-                st.metric("Identification Sessions", total_identified_sessions)
-        else:
-            uploaded_videos = st.session_state.get('uploaded_videos', [])
-            if uploaded_videos:
-                st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
-            else:
-                st.info("📊 No statistics available yet. Process some videos to see the overview.")
+    else:
+        # Fallback: display statistics as text when pandas/plotly not available
+        st.markdown("### 📊 Statistics Summary")
+        stat_col1, stat_col2, stat_col3 = st.columns(3)
+        with stat_col1:
+            st.metric("Total Sessions", total_sessions)
+        with stat_col2:
+            st.metric("Detection Sessions", total_detected_sessions)
+        with stat_col3:
+            st.metric("Identification Sessions", total_identified_sessions)
+else:
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    if uploaded_videos:
+        st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
+    else:
+        st.info("📊 No statistics available yet. Process some videos to see the overview.")

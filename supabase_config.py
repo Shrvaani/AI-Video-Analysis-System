@@ -149,8 +149,8 @@ class SupabaseManager:
             st.error(f"Error saving face image: {e}")
             return False
 
-    def save_video_file(self, session_id, video_filename, video_data):
-        """Save video file to Supabase storage"""
+    def save_video_file(self, session_id, video_filename, video_data, video_hash=None, workflow_mode=None):
+        """Save video file to Supabase storage with enhanced metadata"""
         if not self.is_connected():
             return False
         
@@ -164,15 +164,19 @@ class SupabaseManager:
                 file_options={"content-type": "video/mp4"}
             )
             
-            # Save video metadata to database
-            video_data = {
+            # Save video metadata to database with enhanced information
+            video_metadata = {
                 'session_id': session_id,
                 'video_filename': video_filename,
                 'file_path': file_path,
-                'created_at': datetime.now().isoformat()
+                'video_hash': video_hash or 'unknown',
+                'workflow_mode': workflow_mode or 'detect_identify',
+                'processing_status': 'uploaded',
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
             }
             
-            self.client.table('videos').insert(video_data).execute()
+            self.client.table('videos').insert(video_metadata).execute()
             return True
         except Exception as e:
             st.error(f"Error saving video file: {e}")
@@ -200,6 +204,38 @@ class SupabaseManager:
         except Exception as e:
             st.error(f"Error saving payment results: {e}")
             return False
+
+    def update_video_processing_status(self, session_id, processing_status, workflow_mode=None):
+        """Update video processing status and workflow mode"""
+        if not self.is_connected():
+            return False
+        
+        try:
+            update_data = {
+                'processing_status': processing_status,
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            if workflow_mode:
+                update_data['workflow_mode'] = workflow_mode
+            
+            self.client.table('videos').update(update_data).eq('session_id', session_id).execute()
+            return True
+        except Exception as e:
+            st.error(f"Error updating video processing status: {e}")
+            return False
+
+    def get_video_by_session(self, session_id):
+        """Get video data by session_id"""
+        if not self.is_connected():
+            return None
+        
+        try:
+            result = self.client.table('videos').select('*').eq('session_id', session_id).execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            st.error(f"Error getting video by session: {e}")
+            return None
 
     def get_session_data(self, session_id):
         """Get session data from database"""
