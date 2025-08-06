@@ -1424,7 +1424,27 @@ processed_videos = get_processed_videos()
 
 if processed_videos:
     st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
-        
+    
+    # Temporary debug section to help identify the issue
+    if st.checkbox("🔧 Show Session Debug Info", key="session_debug"):
+        st.write("**Session Debug Information:**")
+        for i, video_info in enumerate(processed_videos):
+            session_id = video_info.get('session_id', 'Unknown')
+            workflow_mode = video_info.get('workflow_mode', 'unknown')
+            st.write(f"**Session {i+1}: {session_id}**")
+            st.write(f"- Workflow Mode: {workflow_mode}")
+            st.write(f"- Video Info: {video_info}")
+            
+            # Check Supabase data
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    payment_data = supabase_manager.get_payment_results(session_id)
+                    st.write(f"- Persons Data: {len(persons_data) if persons_data else 0}")
+                    st.write(f"- Payment Data: {payment_data}")
+                except Exception as e:
+                    st.write(f"- Error getting data: {e}")
+    
     # Create a 2-column, 10-row grid layout
     for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
         col_left, col_right = st.columns(2)
@@ -1467,7 +1487,31 @@ if processed_videos:
                 
             # Determine session type based on workflow mode and data
             session_type = "Unknown"
-            if workflow_mode == "payment_only":
+            
+            # Debug: Log the workflow mode for troubleshooting
+            if workflow_mode == "unknown" or workflow_mode is None:
+                # Try to determine workflow mode from the data
+                if payment_count > 0:
+                    session_type = "Payment Detection"
+                elif detected_count > 0 or identified_count > 0:
+                    session_type = "Person Detection & Identification"
+                else:
+                    # Check if this session has any data at all
+                    has_any_data = False
+                    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                        try:
+                            persons_data = supabase_manager.get_persons_by_session(session_id)
+                            payment_data = supabase_manager.get_payment_results(session_id)
+                            if (persons_data and len(persons_data) > 0) or payment_data:
+                                has_any_data = True
+                        except:
+                            pass
+                    
+                    if has_any_data:
+                        session_type = "Detection & Identification"
+                    else:
+                        session_type = "Incomplete Processing"
+            elif workflow_mode == "payment_only":
                 session_type = "Payment Detection"
             elif workflow_mode == "detect_identify":
                 if detected_count > 0 and identified_count == 0:
@@ -1482,8 +1526,14 @@ if processed_videos:
                 else:
                     session_type = "Detection & Identification"
             else:
-                session_type = "Processed"
-                
+                # Unknown workflow mode, try to determine from data
+                if payment_count > 0:
+                    session_type = "Payment Detection"
+                elif detected_count > 0 or identified_count > 0:
+                    session_type = "Person Detection & Identification"
+                else:
+                    session_type = "Incomplete Processing"
+
             with col_left:
                 st.markdown(f"""
                 <div class="session-card">
@@ -1534,7 +1584,31 @@ if processed_videos:
                 
             # Determine session type based on workflow mode and data
             session_type = "Unknown"
-            if workflow_mode == "payment_only":
+            
+            # Debug: Log the workflow mode for troubleshooting
+            if workflow_mode == "unknown" or workflow_mode is None:
+                # Try to determine workflow mode from the data
+                if payment_count > 0:
+                    session_type = "Payment Detection"
+                elif detected_count > 0 or identified_count > 0:
+                    session_type = "Person Detection & Identification"
+                else:
+                    # Check if this session has any data at all
+                    has_any_data = False
+                    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                        try:
+                            persons_data = supabase_manager.get_persons_by_session(session_id)
+                            payment_data = supabase_manager.get_payment_results(session_id)
+                            if (persons_data and len(persons_data) > 0) or payment_data:
+                                has_any_data = True
+                        except:
+                            pass
+                    
+                    if has_any_data:
+                        session_type = "Detection & Identification"
+                    else:
+                        session_type = "Incomplete Processing"
+            elif workflow_mode == "payment_only":
                 session_type = "Payment Detection"
             elif workflow_mode == "detect_identify":
                 if detected_count > 0 and identified_count == 0:
@@ -1549,8 +1623,14 @@ if processed_videos:
                 else:
                     session_type = "Detection & Identification"
             else:
-                session_type = "Processed"
-                
+                # Unknown workflow mode, try to determine from data
+                if payment_count > 0:
+                    session_type = "Payment Detection"
+                elif detected_count > 0 or identified_count > 0:
+                    session_type = "Person Detection & Identification"
+                else:
+                    session_type = "Incomplete Processing"
+
             with col_right:
                 st.markdown(f"""
                 <div class="session-card">
