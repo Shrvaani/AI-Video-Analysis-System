@@ -721,13 +721,7 @@ with col1:
 
     # Workflow status and current mode - displayed as a bar below upload section, only after video upload
     if video_file:
-        if not st.session_state.workflow_mode:
-            st.markdown("""
-            <div class="info-box">
-                <h4>ℹ️ Select a Workflow Mode</h4>
-                <p>Choose a workflow mode from the controls below to begin processing videos.</p>
-            </div>
-            """, unsafe_allow_html=True)
+        pass  # Removed the workflow mode selection info box
 
     # Store video file info for processing in the video interface section
     if video_file:
@@ -863,12 +857,7 @@ st.markdown("### 🎯 Workflow Controls")
 
 # Show workflow mode selection only after video upload
 if video_file and not st.session_state.get('workflow_mode'):
-    st.markdown("""
-    <div class="info-box">
-        <h4>ℹ️ Select a Workflow Mode</h4>
-        <p>Choose a workflow mode from the controls below to begin processing videos.</p>
-    </div>
-    """, unsafe_allow_html=True)
+    # Removed the workflow mode selection info box
     
     # Workflow Controls
     col_workflow1, col_workflow2 = st.columns(2)
@@ -910,7 +899,8 @@ elif video_file and st.session_state.get('workflow_mode'):
         st.success("🔄 Workflow mode reset. Please select a new mode.")
         st.rerun()
 else:
-    st.info("📤 Upload a video first to select a workflow mode.")
+    # Removed the info message about uploading a video first
+    pass
 
 # Add Session Controls to col2 (right column)
 with col2:
