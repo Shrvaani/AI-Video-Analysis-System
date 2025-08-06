@@ -1306,84 +1306,53 @@ if processed_videos:
             session_has_identified = False
             debug_info = {"session_id": session_id, "detected": False, "identified": False, "method": ""}
             
-            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+            # Always check local file system first for more reliable results
+            detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
+            identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
+            
+            # More robust checking for detected people
+            if os.path.exists(detected_path):
+                try:
+                    detected_persons = [d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]
+                    session_has_detected = len(detected_persons) > 0
+                    debug_info["detected_persons_count"] = len(detected_persons)
+                except Exception as e:
+                    session_has_detected = False
+                    debug_info["detected_error"] = str(e)
+            else:
+                session_has_detected = False
+            
+            # More robust checking for identified people
+            if os.path.exists(identified_path):
+                try:
+                    identified_persons = [d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]
+                    session_has_identified = len(identified_persons) > 0
+                    debug_info["identified_persons_count"] = len(identified_persons)
+                except Exception as e:
+                    session_has_identified = False
+                    debug_info["identified_error"] = str(e)
+            else:
+                session_has_identified = False
+            
+            # If local check didn't find anything, try Supabase as backup
+            if not session_has_detected and not session_has_identified and SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                 try:
                     persons_data = supabase_manager.get_persons_by_session(session_id)
                     if persons_data:
                         session_has_detected = any(p.get('detection_type') == 'detected' for p in persons_data)
                         session_has_identified = any(p.get('detection_type') == 'identified' for p in persons_data)
-                        debug_info["method"] = "supabase"
+                        debug_info["method"] = "supabase_backup"
                         debug_info["persons_count"] = len(persons_data)
                         debug_info["detected"] = session_has_detected
                         debug_info["identified"] = session_has_identified
                 except Exception as e:
-                    # Fallback to local file system
-                    detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
-                    identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-                    
-                    # More robust checking for detected people
-                    if os.path.exists(detected_path):
-                        try:
-                            detected_persons = [d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]
-                            session_has_detected = len(detected_persons) > 0
-                            debug_info["detected_persons_count"] = len(detected_persons)
-                        except Exception as e:
-                            session_has_detected = False
-                            debug_info["detected_error"] = str(e)
-                    else:
-                        session_has_detected = False
-                    
-                    # More robust checking for identified people
-                    if os.path.exists(identified_path):
-                        try:
-                            identified_persons = [d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]
-                            session_has_identified = len(identified_persons) > 0
-                            debug_info["identified_persons_count"] = len(identified_persons)
-                        except Exception as e:
-                            session_has_identified = False
-                            debug_info["identified_error"] = str(e)
-                    else:
-                        session_has_identified = False
-                    
-                    debug_info["method"] = "local"
-                    debug_info["detected_path_exists"] = os.path.exists(detected_path)
-                    debug_info["identified_path_exists"] = os.path.exists(identified_path)
-                    debug_info["detected"] = session_has_detected
-                    debug_info["identified"] = session_has_identified
-            else:
-                # Use local file system
-                detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
-                identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-                
-                # More robust checking for detected people
-                if os.path.exists(detected_path):
-                    try:
-                        detected_persons = [d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]
-                        session_has_detected = len(detected_persons) > 0
-                        debug_info["detected_persons_count"] = len(detected_persons)
-                    except Exception as e:
-                        session_has_detected = False
-                        debug_info["detected_error"] = str(e)
-                else:
-                    session_has_detected = False
-                
-                # More robust checking for identified people
-                if os.path.exists(identified_path):
-                    try:
-                        identified_persons = [d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]
-                        session_has_identified = len(identified_persons) > 0
-                        debug_info["identified_persons_count"] = len(identified_persons)
-                    except Exception as e:
-                        session_has_identified = False
-                        debug_info["identified_error"] = str(e)
-                else:
-                    session_has_identified = False
-                
-                debug_info["method"] = "local"
-                debug_info["detected_path_exists"] = os.path.exists(detected_path)
-                debug_info["identified_path_exists"] = os.path.exists(identified_path)
-                debug_info["detected"] = session_has_detected
-                debug_info["identified"] = session_has_identified
+                    debug_info["supabase_error"] = str(e)
+            
+            debug_info["method"] = "local"
+            debug_info["detected_path_exists"] = os.path.exists(detected_path)
+            debug_info["identified_path_exists"] = os.path.exists(identified_path)
+            debug_info["detected"] = session_has_detected
+            debug_info["identified"] = session_has_identified
             
             # Categorize the session based on what type of processing was done
             if session_has_identified:
