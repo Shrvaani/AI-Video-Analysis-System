@@ -5,7 +5,6 @@ import numpy as np
 from ultralytics import YOLO
 import uuid
 import shutil
-from payment_detection_logic import detect_payments
 
 # Import Supabase manager if available
 try:
