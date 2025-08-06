@@ -1320,9 +1320,32 @@ if processed_videos:
                     # Fallback to local file system
                     detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                     identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-                    session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
-                    session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
-                    debug_info["method"] = "local_fallback"
+                    
+                    # More robust checking for detected people
+                    if os.path.exists(detected_path):
+                        try:
+                            detected_persons = [d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]
+                            session_has_detected = len(detected_persons) > 0
+                            debug_info["detected_persons_count"] = len(detected_persons)
+                        except Exception as e:
+                            session_has_detected = False
+                            debug_info["detected_error"] = str(e)
+                    else:
+                        session_has_detected = False
+                    
+                    # More robust checking for identified people
+                    if os.path.exists(identified_path):
+                        try:
+                            identified_persons = [d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]
+                            session_has_identified = len(identified_persons) > 0
+                            debug_info["identified_persons_count"] = len(identified_persons)
+                        except Exception as e:
+                            session_has_identified = False
+                            debug_info["identified_error"] = str(e)
+                    else:
+                        session_has_identified = False
+                    
+                    debug_info["method"] = "local"
                     debug_info["detected_path_exists"] = os.path.exists(detected_path)
                     debug_info["identified_path_exists"] = os.path.exists(identified_path)
                     debug_info["detected"] = session_has_detected
@@ -1331,8 +1354,31 @@ if processed_videos:
                 # Use local file system
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
-                session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
-                session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
+                
+                # More robust checking for detected people
+                if os.path.exists(detected_path):
+                    try:
+                        detected_persons = [d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]
+                        session_has_detected = len(detected_persons) > 0
+                        debug_info["detected_persons_count"] = len(detected_persons)
+                    except Exception as e:
+                        session_has_detected = False
+                        debug_info["detected_error"] = str(e)
+                else:
+                    session_has_detected = False
+                
+                # More robust checking for identified people
+                if os.path.exists(identified_path):
+                    try:
+                        identified_persons = [d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]
+                        session_has_identified = len(identified_persons) > 0
+                        debug_info["identified_persons_count"] = len(identified_persons)
+                    except Exception as e:
+                        session_has_identified = False
+                        debug_info["identified_error"] = str(e)
+                else:
+                    session_has_identified = False
+                
                 debug_info["method"] = "local"
                 debug_info["detected_path_exists"] = os.path.exists(detected_path)
                 debug_info["identified_path_exists"] = os.path.exists(identified_path)
@@ -1420,10 +1466,18 @@ if processed_videos:
                 st.write(f"  - Identified: {debug_info['identified']}")
                 if 'persons_count' in debug_info:
                     st.write(f"  - Persons in DB: {debug_info['persons_count']}")
+                if 'detected_persons_count' in debug_info:
+                    st.write(f"  - Detected persons count: {debug_info['detected_persons_count']}")
+                if 'identified_persons_count' in debug_info:
+                    st.write(f"  - Identified persons count: {debug_info['identified_persons_count']}")
                 if 'detected_path_exists' in debug_info:
                     st.write(f"  - Detected path exists: {debug_info['detected_path_exists']}")
                 if 'identified_path_exists' in debug_info:
                     st.write(f"  - Identified path exists: {debug_info['identified_path_exists']}")
+                if 'detected_error' in debug_info:
+                    st.write(f"  - Detected error: {debug_info['detected_error']}")
+                if 'identified_error' in debug_info:
+                    st.write(f"  - Identified error: {debug_info['identified_error']}")
         
         # Add debug information for session counting
         if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
