@@ -266,5 +266,15 @@ def detect_payments(st, video_path, video_session_id):
     # Clear the current video session to signal completion
     if 'current_video_session' in st.session_state:
         del st.session_state.current_video_session
+    
+    # Clear processing state
+    try:
+        from app import clear_processing_state
+        clear_processing_state(video_session_id)
+    except:
+        pass  # Ignore if function not available
+    
+    # Force UI refresh
+    st.rerun()
 
     return {"total_payments": total_payments, "cash_payments": cash_payments, "card_payments": card_payments}

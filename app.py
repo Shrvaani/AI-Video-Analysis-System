@@ -469,7 +469,8 @@ def save_processing_state(video_session_id, workflow_mode, video_path, progress=
         try:
             supabase_manager.save_processing_state(processing_state)
         except Exception as e:
-            st.warning(f"⚠️ Could not save processing state to cloud: {e}")
+            # Don't show error for processing state - it's optional
+            pass
     
     # Also save locally as backup
     state_file = os.path.join(temp_dir, f"processing_state_{video_session_id}.json")
@@ -477,7 +478,8 @@ def save_processing_state(video_session_id, workflow_mode, video_path, progress=
         with open(state_file, 'w') as f:
             json.dump(processing_state, f)
     except Exception as e:
-        st.warning(f"⚠️ Could not save processing state locally: {e}")
+        # Don't show error for processing state - it's optional
+        pass
 
 def load_processing_state(video_session_id):
     """Load processing state from persistent storage"""
@@ -488,7 +490,8 @@ def load_processing_state(video_session_id):
             if state:
                 return state
         except Exception as e:
-            st.warning(f"⚠️ Could not load processing state from cloud: {e}")
+            # Don't show error for processing state - it's optional
+            pass
     
     # Fallback to local file
     state_file = os.path.join(temp_dir, f"processing_state_{video_session_id}.json")
@@ -497,7 +500,8 @@ def load_processing_state(video_session_id):
             with open(state_file, 'r') as f:
                 return json.load(f)
         except Exception as e:
-            st.warning(f"⚠️ Could not load processing state from local file: {e}")
+            # Don't show error for processing state - it's optional
+            pass
     
     return None
 
@@ -508,7 +512,8 @@ def clear_processing_state(video_session_id):
         try:
             supabase_manager.clear_processing_state(video_session_id)
         except Exception as e:
-            st.warning(f"⚠️ Could not clear processing state from cloud: {e}")
+            # Don't show error for processing state - it's optional
+            pass
     
     # Clear local file
     state_file = os.path.join(temp_dir, f"processing_state_{video_session_id}.json")
@@ -516,7 +521,8 @@ def clear_processing_state(video_session_id):
         try:
             os.remove(state_file)
         except Exception as e:
-            st.warning(f"⚠️ Could not clear local processing state: {e}")
+            # Don't show error for processing state - it's optional
+            pass
 
 def check_for_interrupted_processing():
     """Check if there's any interrupted processing that can be resumed"""
@@ -1571,7 +1577,7 @@ if processed_videos:
             # Determine session type based on workflow mode and data
             session_type = "Unknown"
             
-            # Debug: Log the workflow mode for troubleshooting
+            
             if workflow_mode == "unknown" or workflow_mode is None:
                 # Try to determine workflow mode from the data
                 if payment_count > 0:
@@ -1670,7 +1676,7 @@ if processed_videos:
             # Determine session type based on workflow mode and data
             session_type = "Unknown"
             
-            # Debug: Log the workflow mode for troubleshooting
+            
             if workflow_mode == "unknown" or workflow_mode is None:
                 # Try to determine workflow mode from the data
                 if payment_count > 0:
