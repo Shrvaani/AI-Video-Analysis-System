@@ -1568,8 +1568,9 @@ if processed_videos:
                 try:
                     # Get person counts from Supabase
                     persons_data = supabase_manager.get_persons_by_session(session_id)
-                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
-                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                    # Fix: Count all persons in the session, not just by detection_type
+                    detected_count = len(persons_data) if persons_data else 0
+                    identified_count = 0  # Will be updated if we have identification data
                     
                     # Get payment data
                     payment_data = supabase_manager.get_payment_results(session_id)
@@ -1587,7 +1588,7 @@ if processed_videos:
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
+            
             # Determine session type based on workflow mode and data
             session_type = "Unknown"
             
@@ -1645,7 +1646,10 @@ if processed_videos:
                     <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
                     <p><strong>👤 Identified:</strong> {identified_count} persons</p>
                     {f'<p><strong>💳 Payments:</strong> {payment_count}</p>' if payment_count > 0 else ''}
-                    <span class="status-indicator status-inactive"></span>Completed
+                    <div style="display: flex; align-items: center; margin-top: 0.5rem;">
+                        <span class="status-indicator status-inactive"></span>
+                        <span style="margin-left: 0.5rem;">Completed</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
     
@@ -1665,8 +1669,9 @@ if processed_videos:
                 try:
                     # Get person counts from Supabase
                     persons_data = supabase_manager.get_persons_by_session(session_id)
-                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
-                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                    # Fix: Count all persons in the session, not just by detection_type
+                    detected_count = len(persons_data) if persons_data else 0
+                    identified_count = 0  # Will be updated if we have identification data
                     
                     # Get payment data
                     payment_data = supabase_manager.get_payment_results(session_id)
@@ -1742,7 +1747,10 @@ if processed_videos:
                     <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
                     <p><strong>👤 Identified:</strong> {identified_count} persons</p>
                     {f'<p><strong>💳 Payments:</strong> {payment_count}</p>' if payment_count > 0 else ''}
-                    <span class="status-indicator status-inactive"></span>Completed
+                    <div style="display: flex; align-items: center; margin-top: 0.5rem;">
+                        <span class="status-indicator status-inactive"></span>
+                        <span style="margin-left: 0.5rem;">Completed</span>
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
 else:
