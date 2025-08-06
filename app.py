@@ -1933,54 +1933,11 @@ if processed_videos:
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
-        # Create data for pie chart - show three categories as originally requested
-        if total_sessions > 0:
-            # Calculate the metrics as originally requested
-            total_detection_videos = 0  # Videos that performed detection (including mixed)
-            total_identify_videos = 0   # Videos that performed identification (including mixed)
-            
-            for debug_info in session_debug_info:
-                detected = debug_info.get("detected", False)
-                identified = debug_info.get("identified", False)
-                workflow_mode = debug_info.get("workflow_mode", "unknown")
-                categorized_by_workflow = debug_info.get("categorized_by_workflow", "")
-                
-                # Count detection videos (including mixed sessions)
-                if detected or (workflow_mode == "detect_identify" and "detection" in categorized_by_workflow):
-                    total_detection_videos += 1
-                
-                # Count identification videos (including mixed sessions)
-                if identified or (workflow_mode == "detect_identify" and "identification" in categorized_by_workflow):
-                    total_identify_videos += 1
-            
-            # Create data with the originally requested three categories
-            chart_data = pd.DataFrame({
-                'Category': ['Total Detection Videos', 'Total Identify Videos', 'Total Processed Videos'],
-                'Count': [total_detection_videos, total_identify_videos, total_sessions]
-            })
-            
-            # Filter out categories with 0 count to avoid showing empty slices
-            chart_data_filtered = chart_data[chart_data['Count'] > 0].copy()
-            
-            # If we have no meaningful breakdown, show the total processed videos
-            if len(chart_data_filtered) == 0:
-                chart_data_filtered = pd.DataFrame({
-                    'Category': ['Total Processed Videos'],
-                    'Count': [total_sessions]
-                })
-            
-            # Create pie chart with count labels
-            fig = px.pie(chart_data_filtered, values='Count', names='Category', 
-                        title='Session Processing Breakdown',
-                        color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
-            
-            # Update the pie chart to show counts instead of percentages
-            fig.update_traces(textinfo='label+value', textposition='inside')
-            
-            # Display pie chart
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Add payment detection pie chart
+        # Create two columns for the statistics
+        col_left, col_right = st.columns(2)
+        
+        with col_left:
+            # Payment Detection Statistics
             st.markdown("### 💳 Payment Detection Statistics")
             
             # Collect payment data from all sessions
@@ -2028,94 +1985,68 @@ if processed_videos:
                     # Display payment pie chart
                     st.plotly_chart(payment_fig, use_container_width=True)
                     
-                    # Show payment summary metrics
-                    payment_col1, payment_col2, payment_col3 = st.columns(3)
-                    with payment_col1:
-                        st.metric("Cash Payments", total_cash_payments)
-                    with payment_col2:
-                        st.metric("Card Payments", total_card_payments)
-                    with payment_col3:
-                        st.metric("Total Payments", total_cash_payments + total_card_payments)
+                    # Show payment metrics below the chart
+                    st.markdown("#### Payment Metrics:")
+                    st.metric("Total Cash Payments", total_cash_payments)
+                    st.metric("Total Card Payments", total_card_payments)
                 else:
                     st.info("💳 No payment data available yet. Process some payment videos to see payment statistics.")
             else:
                 st.info("💳 No payment detection sessions found. Use 'Payment Only' mode to see payment statistics.")
+        
+        with col_right:
+            # Session Processing Statistics
+            st.markdown("### 📊 Session Processing Statistics")
+            
+            # Calculate the metrics as originally requested
+            total_detection_videos = 0  # Videos that performed detection (including mixed)
+            total_identify_videos = 0   # Videos that performed identification (including mixed)
+            
+            for debug_info in session_debug_info:
+                detected = debug_info.get("detected", False)
+                identified = debug_info.get("identified", False)
+                workflow_mode = debug_info.get("workflow_mode", "unknown")
+                categorized_by_workflow = debug_info.get("categorized_by_workflow", "")
+                
+                # Count detection videos (including mixed sessions)
+                if detected or (workflow_mode == "detect_identify" and "detection" in categorized_by_workflow):
+                    total_detection_videos += 1
+                
+                # Count identification videos (including mixed sessions)
+                if identified or (workflow_mode == "detect_identify" and "identification" in categorized_by_workflow):
+                    total_identify_videos += 1
+            
+            # Create data with the originally requested three categories
+            chart_data = pd.DataFrame({
+                'Category': ['Total Detection Videos', 'Total Identify Videos', 'Total Processed Videos'],
+                'Count': [total_detection_videos, total_identify_videos, total_sessions]
+            })
+            
+            # Filter out categories with 0 count to avoid showing empty slices
+            chart_data_filtered = chart_data[chart_data['Count'] > 0].copy()
+            
+            # If we have no meaningful breakdown, show the total processed videos
+            if len(chart_data_filtered) == 0:
+                chart_data_filtered = pd.DataFrame({
+                    'Category': ['Total Processed Videos'],
+                    'Count': [total_sessions]
+                })
+            
+            # Create pie chart with count labels
+            fig = px.pie(chart_data_filtered, values='Count', names='Category', 
+                        title='Session Processing Breakdown',
+                        color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
+            
+            # Update the pie chart to show counts instead of percentages
+            fig.update_traces(textinfo='label+value', textposition='inside')
+            
+            # Display pie chart
+            st.plotly_chart(fig, use_container_width=True)
+            
+            # Show session metrics below the chart
+            st.markdown("#### Session Metrics:")
+            st.metric("Total Processed Videos", total_sessions)
+            st.metric("Total Detection Videos", total_detection_videos)
+            st.metric("Total Identification Videos", total_identify_videos)
     else:
         st.info("📊 No processing data available yet. Process some videos to see statistics.")
-
-    # Show summary metrics
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Detection Videos", total_detected_sessions)
-    with col2:
-        st.metric("Identification Videos", total_identified_sessions)
-    with col3:
-        st.metric("Total Processed Videos", total_sessions)
-    
-    # Temporary debug info to help troubleshoot
-    if st.checkbox("🔍 Show Data Debug", key="temp_debug"):
-        st.write("**Data Debug Info:**")
-        st.write(f"- Total sessions: {total_sessions}")
-        st.write(f"- Detection sessions: {total_detected_sessions}")
-        st.write(f"- Identification sessions: {total_identified_sessions}")
-        if total_sessions > 0 and PANDAS_AVAILABLE:
-            st.write(f"- Chart data: {chart_data.to_dict('records')}")
-        st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
-        st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
-        
-        st.write("**Session Debug Details:**")
-        for debug_info in session_debug_info:
-            st.write(f"- Session {debug_info['session_id']}:")
-            st.write(f"  - Method: {debug_info['method']}")
-            st.write(f"  - Detected: {debug_info['detected']}")
-            st.write(f"  - Identified: {debug_info['identified']}")
-            if 'persons_count' in debug_info:
-                st.write(f"  - Persons in DB: {debug_info['persons_count']}")
-            if 'detected_persons_count' in debug_info:
-                st.write(f"  - Detected persons count: {debug_info['detected_persons_count']}")
-            if 'identified_persons_count' in debug_info:
-                st.write(f"  - Identified persons count: {debug_info['identified_persons_count']}")
-            if 'detected_path_exists' in debug_info:
-                st.write(f"  - Detected path exists: {debug_info['detected_path_exists']}")
-            if 'identified_path_exists' in debug_info:
-                st.write(f"  - Identified path exists: {debug_info['identified_path_exists']}")
-            if 'detected_error' in debug_info:
-                st.write(f"  - Detected error: {debug_info['detected_error']}")
-            if 'identified_error' in debug_info:
-                st.write(f"  - Identified error: {debug_info['identified_error']}")
-    
-    # Add debug information for session counting
-    if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
-        st.write("**Session Count Debug Info:**")
-        st.write(f"- Total processed sessions: {total_sessions}")
-        st.write(f"- Detection sessions: {total_detected_sessions}")
-        st.write(f"- Identification sessions: {total_identified_sessions}")
-        st.write("**Individual Session Details:**")
-        for i, video_info in enumerate(processed_videos):
-            session_id = video_info.get('session_id')
-            st.write(f"Session {i+1}: {session_id}")
-            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-                try:
-                    persons_data = supabase_manager.get_persons_by_session(session_id)
-                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
-                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
-                    st.write(f"  - Detected persons: {detected_count}")
-                    st.write(f"  - Identified persons: {identified_count}")
-                except Exception as e:
-                    st.write(f"  - Error getting data: {e}")
-else:
-    # Fallback: display statistics as text when pandas/plotly not available
-    st.markdown("### 📊 Statistics Summary")
-    stat_col1, stat_col2, stat_col3 = st.columns(3)
-    with stat_col1:
-        st.metric("Total Sessions", total_sessions)
-    with stat_col2:
-        st.metric("Detection Sessions", total_detected_sessions)
-    with stat_col3:
-        st.metric("Identification Sessions", total_identified_sessions)
-    
-    uploaded_videos = st.session_state.get('uploaded_videos', [])
-    if uploaded_videos:
-        st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
-    else:
-        st.info("📊 No statistics available yet. Process some videos to see the overview.")
