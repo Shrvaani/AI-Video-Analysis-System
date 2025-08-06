@@ -542,7 +542,8 @@ if interrupted_state:
     st.session_state.pending_processing = interrupted_state
     st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
     st.session_state.current_video_session = interrupted_state.get('video_session_id')
-    st.info(f"🔄 **Resuming interrupted processing** for session {interrupted_state.get('video_session_id')}")
+    st.success(f"🔄 **Automatically resuming interrupted processing** for session {interrupted_state.get('video_session_id')}")
+    st.info("The video processing will continue from where it left off.")
 
 # Load or initialize video_hashes from file
 if 'video_hashes' not in st.session_state:
@@ -1163,6 +1164,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
+                # Save processing state before starting payment detection
+                save_processing_state(video_session_id, st.session_state.workflow_mode, temp_video_path, 0)
                 detect_payments(st, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
