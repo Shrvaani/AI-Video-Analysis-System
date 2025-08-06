@@ -548,8 +548,49 @@ if interrupted_state:
     st.session_state.pending_processing = interrupted_state
     st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
     st.session_state.current_video_session = interrupted_state.get('video_session_id')
+    
+    # Show resume options
     st.success(f"🔄 **Automatically resuming interrupted processing** for session {interrupted_state.get('video_session_id')}")
     st.info("The video processing will continue from where it left off.")
+    
+    # Add option to cancel or change workflow mode
+    col_resume1, col_resume2, col_resume3 = st.columns([1, 1, 2])
+    with col_resume1:
+        if st.button("❌ Cancel Resume", help="Cancel the automatic resume and clear the pending processing"):
+            if 'pending_processing' in st.session_state:
+                del st.session_state.pending_processing
+            if 'current_video_session' in st.session_state:
+                del st.session_state.current_video_session
+            st.success("✅ Automatic resume cancelled. You can now upload a new video.")
+            st.rerun()
+    
+    with col_resume2:
+        if st.button("🔄 Change Mode", help="Change the workflow mode before resuming"):
+            st.session_state.show_mode_selector = True
+            st.rerun()
+    
+    # Show mode selector if requested
+    if st.session_state.get('show_mode_selector', False):
+        st.markdown("### 🔄 Select Workflow Mode for Resume")
+        new_mode = st.selectbox(
+            "Choose workflow mode:",
+            ["detect_identify", "payment_only"],
+            index=0 if st.session_state.workflow_mode == "detect_identify" else 1,
+            help="Select the workflow mode for the resumed processing"
+        )
+        
+        col_mode1, col_mode2 = st.columns(2)
+        with col_mode1:
+            if st.button("✅ Confirm Mode"):
+                st.session_state.workflow_mode = new_mode
+                st.session_state.show_mode_selector = False
+                st.success(f"✅ Workflow mode changed to: {new_mode}")
+                st.rerun()
+        
+        with col_mode2:
+            if st.button("❌ Cancel"):
+                st.session_state.show_mode_selector = False
+                st.rerun()
 
 # Load or initialize video_hashes from file
 if 'video_hashes' not in st.session_state:
