@@ -602,6 +602,57 @@ def save_video_hashes():
 def should_force_detection():
     return len(st.session_state.get('video_hashes', {})) == 0
 
+def should_use_identification_mode(video_hash, base_faces_dir):
+    """Enhanced logic to determine if we should use identification mode instead of detection"""
+    has_existing_data = False
+    
+    # Method 1: Check if this exact video hash has been processed before
+    if video_hash in st.session_state.video_hashes.values():
+        has_existing_data = True
+    
+    # Method 2: Check if there are any detected persons in any previous sessions
+    existing_persons = []
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            all_sessions = supabase_manager.get_all_sessions()
+            for session in all_sessions:
+                persons_data = supabase_manager.get_persons_by_session(session['session_id'])
+                if persons_data:
+                    existing_persons.extend(persons_data)
+        except Exception as e:
+            st.warning(f"⚠️ Could not check Supabase for existing persons: {e}")
+    
+    if not has_existing_data and len(existing_persons) > 0:
+        has_existing_data = True
+    
+    # Method 3: Check local file system for detected persons
+    if not has_existing_data:
+        try:
+            detected_sessions = [d for d in os.listdir(os.path.join(base_faces_dir, "Detected people")) if os.path.isdir(os.path.join(base_faces_dir, "Detected people", d))]
+            for session_id in detected_sessions:
+                session_path = os.path.join(base_faces_dir, "Detected people", session_id)
+                if os.path.exists(session_path):
+                    person_folders = [d for d in os.listdir(session_path) if os.path.isdir(os.path.join(session_path, d))]
+                    if len(person_folders) > 0:
+                        has_existing_data = True
+                        break
+        except Exception as e:
+            st.warning(f"⚠️ Could not check local file system for existing data: {e}")
+    
+    # Method 4: Check Supabase for existing person data
+    if not has_existing_data and SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            all_sessions = supabase_manager.get_all_sessions()
+            for session in all_sessions:
+                persons_data = supabase_manager.get_persons_by_session(session['session_id'])
+                if persons_data and len(persons_data) > 0:
+                    has_existing_data = True
+                    break
+        except Exception as e:
+            st.warning(f"⚠️ Could not check Supabase for existing data: {e}")
+    
+    return has_existing_data
+
 # Function to get processed videos
 def get_processed_videos():
     uploaded_videos = st.session_state.get('uploaded_videos', [])
@@ -1171,8 +1222,10 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             # Decide workflow based on mode and video hash
             st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
             if st.session_state.workflow_mode == "detect_identify":
-                # Check if we have existing data to identify against
-                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+                # Use enhanced logic to determine if we should use identification mode
+                has_existing_data = should_use_identification_mode(video_hash, base_faces_dir)
+                
+                st.info(f"🔍 Smart Detection Logic: Video hash exists: {video_hash in st.session_state.video_hashes.values()}, Has existing data: {has_existing_data}")
                 
                 if has_existing_data:
                     st.markdown(f"""
