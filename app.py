@@ -545,86 +545,14 @@ def check_for_interrupted_processing():
 # Check for interrupted processing on every page load
 interrupted_state = check_for_interrupted_processing()
 if interrupted_state and not st.session_state.get('resume_cancelled', False):
-    # Don't resume if payment processing is already complete
-    if st.session_state.get('payment_processing_complete', False):
-        # Clear the completion flag and don't resume
-        del st.session_state.payment_processing_complete
-        # Clear any pending processing state
-        if 'pending_processing' in st.session_state:
-            del st.session_state.pending_processing
-    else:
-        st.session_state.pending_processing = interrupted_state
-        st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
-        st.session_state.current_video_session = interrupted_state.get('video_session_id')
-    
-    # Show resume options
-    st.success(f"🔄 **Automatically resuming interrupted processing** for session {interrupted_state.get('video_session_id')}")
-    st.info("The video processing will continue from where it left off.")
-    
-    # Add option to cancel or change workflow mode
-    col_resume1, col_resume2, col_resume3 = st.columns([1, 1, 2])
-    with col_resume1:
-        if st.button("❌ Cancel Resume", key="cancel_resume", help="Cancel the automatic resume and clear the pending processing"):
-            # Clear all pending processing state
-            if 'pending_processing' in st.session_state:
-                del st.session_state.pending_processing
-            if 'current_video_session' in st.session_state:
-                del st.session_state.current_video_session
-            if 'workflow_mode' in st.session_state:
-                del st.session_state.workflow_mode
-            if 'show_mode_selector' in st.session_state:
-                del st.session_state.show_mode_selector
-            
-            # Clear processing state file if it exists
-            video_session_id = interrupted_state.get('video_session_id')
-            if video_session_id:
-                try:
-                    clear_processing_state(video_session_id)
-                except:
-                    pass  # Ignore errors in clearing processing state
-            
-            # Clear any processing state files from temp directory
-            if os.path.exists(temp_dir):
-                try:
-                    state_files = [f for f in os.listdir(temp_dir) if f.startswith('processing_state_') and f.endswith('.json')]
-                    for state_file in state_files:
-                        os.remove(os.path.join(temp_dir, state_file))
-                except:
-                    pass  # Ignore errors in clearing files
-            
-            # Set cancelled flag to prevent future resumes
-            st.session_state.resume_cancelled = True
-            
-            st.success("✅ Automatic resume cancelled. You can now upload a new video.")
-            st.rerun()
-    
-    with col_resume2:
-        if st.button("🔄 Change Mode", help="Change the workflow mode before resuming"):
-            st.session_state.show_mode_selector = True
-            st.rerun()
-    
-    # Show mode selector if requested
-    if st.session_state.get('show_mode_selector', False):
-        st.markdown("### 🔄 Select Workflow Mode for Resume")
-        new_mode = st.selectbox(
-            "Choose workflow mode:",
-            ["detect_identify", "payment_only"],
-            index=0 if st.session_state.get('workflow_mode') == "detect_identify" else 1,
-            help="Select the workflow mode for the resumed processing"
-        )
-        
-        col_mode1, col_mode2 = st.columns(2)
-        with col_mode1:
-            if st.button("✅ Confirm Mode"):
-                st.session_state.workflow_mode = new_mode
-                st.session_state.show_mode_selector = False
-                st.success(f"✅ Workflow mode changed to: {new_mode}")
-                st.rerun()
-        
-        with col_mode2:
-            if st.button("❌ Cancel"):
-                st.session_state.show_mode_selector = False
-                st.rerun()
+    # Clear any old processing state files to prevent automatic resume
+    if os.path.exists(temp_dir):
+        try:
+            state_files = [f for f in os.listdir(temp_dir) if f.startswith('processing_state_') and f.endswith('.json')]
+            for state_file in state_files:
+                os.remove(os.path.join(temp_dir, state_file))
+        except:
+            pass  # Ignore errors in clearing files
 
 # Load or initialize video_hashes from file
 if 'video_hashes' not in st.session_state:
