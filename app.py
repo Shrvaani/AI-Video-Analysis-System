@@ -1131,8 +1131,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
         if st.session_state.workflow_mode == "detect_identify":
             # Check if we have existing data to identify against
             has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
-                
-                if has_existing_data:
+            
+            if has_existing_data:
                     st.markdown(f"""
                     <div class="session-card">
                         <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
