@@ -673,13 +673,7 @@ with col1:
                 
                 # Now save video file after session is created
                 if video_content_for_supabase:
-                    if supabase_manager.save_video_file(
-                        video_session_id, 
-                        video_file.name, 
-                        video_content_for_supabase,
-                        video_hash=video_hash,
-                        workflow_mode=st.session_state.get('workflow_mode', 'detect_identify')
-                    ):
+                    if supabase_manager.save_video_file(video_session_id, video_file.name, video_content_for_supabase):
                         st.success("☁️ Video saved to cloud storage")
                     else:
                         st.warning("⚠️ Failed to save video to cloud storage, using local storage only")
