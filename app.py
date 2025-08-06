@@ -1127,10 +1127,10 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             The app will attempt to run but may show error messages for unavailable features.
             """)
         # Decide workflow based on mode and video hash
-            st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
+        st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
         if st.session_state.workflow_mode == "detect_identify":
-                # Check if we have existing data to identify against
-                has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
+            # Check if we have existing data to identify against
+            has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
                 
                 if has_existing_data:
                     st.markdown(f"""
