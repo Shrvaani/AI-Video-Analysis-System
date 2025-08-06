@@ -45,7 +45,8 @@ def detect_payments(st, video_path, video_session_id):
     first_card_detected = False
     cash_payments = 0
     card_payments = 0
-    tracked_centroids = {}  # Track centroids across frames: {centroid: (cls_id, frame_count)}
+    tracked_centroids = {}  # Track centroids across frames: {centroid: (cls_id, frame_count, confidence)}
+    payment_events = []  # Track all payment events for better analysis
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -88,11 +89,11 @@ def detect_payments(st, video_path, video_session_id):
         
         try:
             if model1 is not None:
-                results1 = model1(frame, conf=0.3)
+                results1 = model1(frame, conf=0.4)  # Increased confidence threshold
                 all_dets.extend(results1[0].boxes.data.tolist())
             
             if model2 is not None:
-                results2 = model2(frame, conf=0.3)
+                results2 = model2(frame, conf=0.4)  # Increased confidence threshold
                 all_dets.extend(results2[0].boxes.data.tolist())
         except Exception as e:
             st.warning(f"Warning: Error during model inference on frame {current_frame}: {e}")
@@ -104,7 +105,7 @@ def detect_payments(st, video_path, video_session_id):
                 boxes = [[int(x1), int(y1), int(x2 - x1), int(y2 - y1)] for _, x1, y1, x2, y2, _ in all_dets]
                 scores = [float(confidence) for _, _, _, _, _, confidence in all_dets]
                 classes = [int(cls_id) for cls_id, _, _, _, _, _ in all_dets]
-                indices = cv2.dnn.NMSBoxes(boxes, scores, 0.3, 0.8)
+                indices = cv2.dnn.NMSBoxes(boxes, scores, 0.4, 0.5)  # Adjusted NMS parameters
                 if len(indices) > 0:
                     all_dets = [all_dets[i] for i in indices.flatten()]
                 else:
@@ -119,33 +120,55 @@ def detect_payments(st, video_path, video_session_id):
                 cls_id = int(cls_id)
                 x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
 
-                if cls_id not in [CLASS_IDS["cash"], CLASS_IDS["card"]] or confidence < 0.3:
+                # Only process cash and card detections with high confidence
+                if cls_id not in [CLASS_IDS["cash"], CLASS_IDS["card"]] or confidence < 0.4:
                     continue
 
                 center = (x1 + x2) // 2, (y1 + y2) // 2
+                center_key = f"{center[0]}_{center[1]}"
 
-                if center in tracked_centroids:
-                    prev_cls_id, frame_count = tracked_centroids[center]
-                    if prev_cls_id == cls_id and frame_count > current_frame - 3:
+                # Improved tracking logic to prevent duplicate counting
+                if center_key in tracked_centroids:
+                    prev_cls_id, prev_frame, prev_confidence = tracked_centroids[center_key]
+                    # Only count as new if it's a different class or significantly different confidence
+                    if (prev_cls_id == cls_id and 
+                        current_frame - prev_frame < 15 and  # Reduced frame gap
+                        abs(confidence - prev_confidence) < 0.1):  # Similar confidence
                         continue
-                tracked_centroids[center] = (cls_id, current_frame)
+                
+                tracked_centroids[center_key] = (cls_id, current_frame, confidence)
 
+                # Determine payment type based on class ID
                 if cls_id == CLASS_IDS["cash"]:
+                    payment_label = "Cash Payment"
+                    color = (0, 165, 255)  # Orange
                     if not first_cash_detected:
-                        if payment_type is None or (not first_card_detected and class_names.get(cls_id, "") == "card"):
-                            payment_type = "Cash Payment"
                         first_cash_detected = True
-                        color = (0, 165, 255)  # Orange
+                        if payment_type is None:
+                            payment_type = "Cash Payment"
                     cash_payments += 1
+                    payment_events.append({
+                        "type": "cash",
+                        "frame": current_frame,
+                        "confidence": confidence,
+                        "center": center
+                    })
                 elif cls_id == CLASS_IDS["card"]:
+                    payment_label = "Card Payment"
+                    color = (255, 0, 255)  # Purple
                     if not first_card_detected:
-                        if payment_type is None or payment_type != "Cash Payment":
-                            payment_type = "Card Payment"
                         first_card_detected = True
-                        color = (255, 0, 255)  # Purple
+                        if payment_type is None:
+                            payment_type = "Card Payment"
                     card_payments += 1
+                    payment_events.append({
+                        "type": "card",
+                        "frame": current_frame,
+                        "confidence": confidence,
+                        "center": center
+                    })
 
-                label = f"{payment_type} (Confidence: {confidence:.2f})"
+                label = f"{payment_label} (Conf: {confidence:.2f})"
                 cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
                 cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
             except Exception as e:
@@ -176,6 +199,31 @@ def detect_payments(st, video_path, video_session_id):
         st.session_state.stop_processing = False
         return None
 
+    # Post-processing: Analyze payment events to improve accuracy
+    if payment_events:
+        # Group nearby events to avoid double counting
+        filtered_events = []
+        for event in payment_events:
+            is_duplicate = False
+            for existing in filtered_events:
+                if (event["type"] == existing["type"] and 
+                    abs(event["frame"] - existing["frame"]) < 30 and  # Within 30 frames
+                    abs(event["center"][0] - existing["center"][0]) < 50 and  # Within 50 pixels
+                    abs(event["center"][1] - existing["center"][1]) < 50):
+                    is_duplicate = True
+                    break
+            if not is_duplicate:
+                filtered_events.append(event)
+        
+        # Recalculate counts based on filtered events
+        cash_payments = len([e for e in filtered_events if e["type"] == "cash"])
+        card_payments = len([e for e in filtered_events if e["type"] == "card"])
+        
+        # Determine payment type based on first detected payment
+        if filtered_events:
+            first_event = min(filtered_events, key=lambda x: x["frame"])
+            payment_type = "Cash Payment" if first_event["type"] == "cash" else "Card Payment"
+
     total_payments = cash_payments + card_payments
     st.success(f"✅ Payment Detection Completed!")
     st.info(f"**Results:** Total Payments = {total_payments}, Cash Payments = {cash_payments}, Card Payments = {card_payments}")
@@ -200,7 +248,6 @@ def detect_payments(st, video_path, video_session_id):
                 "total_payments": total_payments,
                 "cash_payments": cash_payments,
                 "card_payments": card_payments
-                # Note: payment_type is not stored in database, only used for display
             }
             if supabase_manager.save_payment_results(video_session_id, payment_data):
                 st.success("☁️ Payment results saved to cloud storage")
