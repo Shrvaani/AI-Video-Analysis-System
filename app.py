@@ -789,7 +789,7 @@ st.markdown("""
 
 # Supabase Status Indicator
 if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-    st.success("☁️ **Cloud Storage**: Connected to Supabase - Data will be saved to cloud")
+    # Cloud storage status removed - no longer showing persistent message
     
     # Debug: Show database connection and data status
     if st.checkbox("🔧 Show Database Debug Info", key="debug_db"):
@@ -841,7 +841,8 @@ if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             for video in processed_videos:
                 st.write(f"- {video.get('session_id', 'Unknown')}")
 else:
-    st.warning("💾 **Local Storage**: Using local file system - Data will be lost on app restart")
+    # Local storage status removed - no longer showing persistent message
+    pass
 
 # Data is now automatically loaded on every page refresh
 # Debug info is available below if needed
