@@ -239,7 +239,7 @@ def detect_payments(st, video_path, video_session_id):
             writer.writerow(["Total Payments", total_payments])
             writer.writerow(["Cash Payments", cash_payments])
             writer.writerow(["Card Payments", card_payments])
-            st.success(f"📊 Payment summary saved to {csv_filename}")
+        st.success(f"📊 Payment summary saved to {csv_filename}")
     except Exception as e:
         st.warning(f"Warning: Could not save payment summary: {e}")
 
