@@ -1834,9 +1834,17 @@ if processed_videos:
             # If we can't determine from file system, use workflow mode as fallback
             if not session_has_detected and not session_has_identified:
                 if workflow_mode == "detect_identify":
-                    # Assume it was a detection session if workflow was detect_identify
-                    total_detected_sessions += 1
-                    debug_info["categorized_by_workflow"] = "detect_identify"
+                    # Check if this is a re-upload (identification) or first upload (detection)
+                    # If the video hash exists in previous sessions, it's likely identification
+                    video_hash = video_info.get('hash', '')
+                    if video_hash in st.session_state.get('video_hashes', {}).values():
+                        # This is likely an identification session
+                        total_identified_sessions += 1
+                        debug_info["categorized_by_workflow"] = "detect_identify_as_identification"
+                    else:
+                        # This is likely a detection session
+                        total_detected_sessions += 1
+                        debug_info["categorized_by_workflow"] = "detect_identify_as_detection"
                 elif workflow_mode == "payment_only":
                     # Payment sessions don't count as detection or identification
                     debug_info["categorized_by_workflow"] = "payment_only"
@@ -1860,13 +1868,14 @@ if processed_videos:
                 detected = debug_info.get("detected", False)
                 identified = debug_info.get("identified", False)
                 workflow_mode = debug_info.get("workflow_mode", "unknown")
+                categorized_by_workflow = debug_info.get("categorized_by_workflow", "")
                 
                 # Count detection videos (including mixed sessions)
-                if detected or workflow_mode == "detect_identify":
+                if detected or (workflow_mode == "detect_identify" and "detection" in categorized_by_workflow):
                     total_detection_videos += 1
                 
                 # Count identification videos (including mixed sessions)
-                if identified:
+                if identified or (workflow_mode == "detect_identify" and "identification" in categorized_by_workflow):
                     total_identify_videos += 1
             
             # Create data with the originally requested three categories
