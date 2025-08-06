@@ -1273,8 +1273,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 """, unsafe_allow_html=True)
             
             elif st.session_state.workflow_mode == "payment_only":
-            # Show payment detection metrics
-            col_stats1, col_stats2, col_stats3 = st.columns(3)
+                # Show payment detection metrics
+                col_stats1, col_stats2, col_stats3 = st.columns(3)
             
             with col_stats1:
                 st.metric("Cash Payments", "Processing...")
@@ -1355,7 +1355,7 @@ if processed_videos:
             
             # Left column session
             if row < len(processed_videos):
-            video_info = processed_videos[row]
+                video_info = processed_videos[row]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
@@ -1395,7 +1395,7 @@ if processed_videos:
     
             # Right column session
             if row + 1 < len(processed_videos):
-            video_info = processed_videos[row + 1]
+                video_info = processed_videos[row + 1]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
@@ -1434,7 +1434,7 @@ if processed_videos:
                     """, unsafe_allow_html=True)
     else:
         uploaded_videos = st.session_state.get('uploaded_videos', [])
-    if uploaded_videos:
+        if uploaded_videos:
         st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
 else:
     st.info("📋 No previously processed sessions found.")
