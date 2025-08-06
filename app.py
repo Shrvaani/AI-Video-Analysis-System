@@ -1295,12 +1295,16 @@ if processed_videos:
     total_detected_sessions = 0
     total_identified_sessions = 0
     
+    # Debug: Track what we find for each session
+    session_debug_info = []
+    
     for video_info in processed_videos:
         session_id = video_info.get('session_id')
         if session_id:
             # Check if this session has any detected or identified persons
             session_has_detected = False
             session_has_identified = False
+            debug_info = {"session_id": session_id, "detected": False, "identified": False, "method": ""}
             
             if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
                 try:
@@ -1308,18 +1312,32 @@ if processed_videos:
                     if persons_data:
                         session_has_detected = any(p.get('detection_type') == 'detected' for p in persons_data)
                         session_has_identified = any(p.get('detection_type') == 'identified' for p in persons_data)
+                        debug_info["method"] = "supabase"
+                        debug_info["persons_count"] = len(persons_data)
+                        debug_info["detected"] = session_has_detected
+                        debug_info["identified"] = session_has_identified
                 except Exception as e:
                     # Fallback to local file system
                     detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                     identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                     session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
                     session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
+                    debug_info["method"] = "local_fallback"
+                    debug_info["detected_path_exists"] = os.path.exists(detected_path)
+                    debug_info["identified_path_exists"] = os.path.exists(identified_path)
+                    debug_info["detected"] = session_has_detected
+                    debug_info["identified"] = session_has_identified
             else:
                 # Use local file system
                 detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 session_has_detected = os.path.exists(detected_path) and len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) > 0
                 session_has_identified = os.path.exists(identified_path) and len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) > 0
+                debug_info["method"] = "local"
+                debug_info["detected_path_exists"] = os.path.exists(detected_path)
+                debug_info["identified_path_exists"] = os.path.exists(identified_path)
+                debug_info["detected"] = session_has_detected
+                debug_info["identified"] = session_has_identified
             
             # Categorize the session based on what type of processing was done
             if session_has_identified:
@@ -1329,6 +1347,8 @@ if processed_videos:
                 # If session has detected persons, it's also a detection session
                 # (A session can be both detection and identification)
                 total_detected_sessions += 1
+            
+            session_debug_info.append(debug_info)
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
@@ -1391,6 +1411,19 @@ if processed_videos:
             st.write(f"- Chart data: {chart_data.to_dict('records')}")
             st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
             st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
+            
+            st.write("**Session Debug Details:**")
+            for debug_info in session_debug_info:
+                st.write(f"- Session {debug_info['session_id']}:")
+                st.write(f"  - Method: {debug_info['method']}")
+                st.write(f"  - Detected: {debug_info['detected']}")
+                st.write(f"  - Identified: {debug_info['identified']}")
+                if 'persons_count' in debug_info:
+                    st.write(f"  - Persons in DB: {debug_info['persons_count']}")
+                if 'detected_path_exists' in debug_info:
+                    st.write(f"  - Detected path exists: {debug_info['detected_path_exists']}")
+                if 'identified_path_exists' in debug_info:
+                    st.write(f"  - Identified path exists: {debug_info['identified_path_exists']}")
         
         # Add debug information for session counting
         if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
