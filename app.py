@@ -1242,7 +1242,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             The app will attempt to run but may show error messages for unavailable features.
             """)
         # Decide workflow based on mode and video hash
-        st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
+
         if st.session_state.workflow_mode == "detect_identify":
             # Check if we have existing data to identify against
             # Fix: Check if this specific video hash has been processed before
@@ -1256,10 +1256,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 # This is a new video, should always go to detection
                 has_existing_data = False
             
-            st.write(f"🔍 DEBUG: Video hash: {video_hash}")
-            st.write(f"🔍 DEBUG: Existing persons: {len(existing_persons)}")
-            st.write(f"🔍 DEBUG: Video hash in processed: {video_hash in st.session_state.video_hashes.values()}")
-            st.write(f"🔍 DEBUG: Has existing data: {has_existing_data}")
+
             
             if has_existing_data:
                 st.markdown(f"""
@@ -1528,25 +1525,7 @@ processed_videos = get_processed_videos()
 if processed_videos:
     st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
     
-    # Temporary debug section to help identify the issue
-    if st.checkbox("🔧 Show Session Debug Info", key="session_debug"):
-        st.write("**Session Debug Information:**")
-        for i, video_info in enumerate(processed_videos):
-            session_id = video_info.get('session_id', 'Unknown')
-            workflow_mode = video_info.get('workflow_mode', 'unknown')
-            st.write(f"**Session {i+1}: {session_id}**")
-            st.write(f"- Workflow Mode: {workflow_mode}")
-            st.write(f"- Video Info: {video_info}")
-            
-            # Check Supabase data
-            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-                try:
-                    persons_data = supabase_manager.get_persons_by_session(session_id)
-                    payment_data = supabase_manager.get_payment_results(session_id)
-                    st.write(f"- Persons Data: {len(persons_data) if persons_data else 0}")
-                    st.write(f"- Payment Data: {payment_data}")
-                except Exception as e:
-                    st.write(f"- Error getting data: {e}")
+
     
     # Create a 2-column, 10-row grid layout
     for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
