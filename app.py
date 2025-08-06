@@ -559,14 +559,7 @@ with col1:
 
     # Workflow status and current mode - displayed as a bar below upload section, only after video upload
     if video_file:
-        if st.session_state.workflow_mode:
-            st.markdown(f"""
-            <div class="info-box">
-                <h4>🎯 Current Workflow Mode</h4>
-                <p><strong>{st.session_state.workflow_mode.replace('_', ' ').title() if st.session_state.workflow_mode else "Not Set"}</strong></p>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
+        if not st.session_state.workflow_mode:
             st.markdown("""
             <div class="info-box">
                 <h4>ℹ️ Select a Workflow Mode</h4>
@@ -749,14 +742,6 @@ if video_file and not st.session_state.get('workflow_mode'):
             st.success("✅ Switched to Payment Only mode")
 
 elif video_file and st.session_state.get('workflow_mode'):
-    # Show current workflow mode with option to change
-    st.markdown(f"""
-    <div class="info-box">
-        <h4>🎯 Current Workflow Mode</h4>
-        <p><strong>{st.session_state.workflow_mode.replace('_', ' ').title()}</strong></p>
-    </div>
-    """, unsafe_allow_html=True)
-    
     # Add a button to change workflow mode for new video
     if st.button("🔄 Change Workflow Mode for New Video", use_container_width=True):
         st.session_state.workflow_mode = None
@@ -1074,14 +1059,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     
     # Video processing interface - actual processing happens in the logic modules
     
-    # Debug: Show current workflow mode (temporary for troubleshooting)
-    if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
-        with st.expander("🔍 Debug: Current Workflow Status"):
-            st.write(f"**Current Workflow Mode:** {st.session_state.workflow_mode}")
-            st.write(f"**Current Video Session:** {st.session_state.current_video_session}")
-            st.write(f"**Pending Processing:** {'pending_processing' in st.session_state}")
-            if 'pending_processing' in st.session_state:
-                st.write(f"**Pending Video Session:** {st.session_state.pending_processing.get('video_session_id', 'None')}")
+
     
     # Real-time statistics - only show when video is actively being processed
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
