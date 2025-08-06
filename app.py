@@ -1646,12 +1646,10 @@ if processed_videos:
                     <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
                     <p><strong>👤 Identified:</strong> {identified_count} persons</p>
                     {f'<p><strong>💳 Payments:</strong> {payment_count}</p>' if payment_count > 0 else ''}
-                    <div style="display: flex; align-items: center; margin-top: 0.5rem;">
-                        <span class="status-indicator status-inactive"></span>
-                        <span style="margin-left: 0.5rem;">Completed</span>
-                    </div>
                 </div>
                 """, unsafe_allow_html=True)
+                # Use Streamlit native components for status
+                st.markdown("✅ **Completed**")
     
         # Right column session
         if row + 1 < len(processed_videos):
@@ -1747,12 +1745,10 @@ if processed_videos:
                     <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
                     <p><strong>👤 Identified:</strong> {identified_count} persons</p>
                     {f'<p><strong>💳 Payments:</strong> {payment_count}</p>' if payment_count > 0 else ''}
-                    <div style="display: flex; align-items: center; margin-top: 0.5rem;">
-                        <span class="status-indicator status-inactive"></span>
-                        <span style="margin-left: 0.5rem;">Completed</span>
-                    </div>
                 </div>
                 """, unsafe_allow_html=True)
+                # Use Streamlit native components for status
+                st.markdown("✅ **Completed**")
 else:
     uploaded_videos = st.session_state.get('uploaded_videos', [])
     if uploaded_videos:
