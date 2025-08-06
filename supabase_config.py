@@ -328,7 +328,7 @@ class SupabaseManager:
             self.client.table('processing_states').upsert(data).execute()
             return True
         except Exception as e:
-            st.error(f"Error saving processing state: {e}")
+            # Don't show error for processing state - it's optional
             return False
 
     def get_processing_state(self, video_session_id):
@@ -342,7 +342,7 @@ class SupabaseManager:
                 return result.data[0]
             return None
         except Exception as e:
-            st.error(f"Error getting processing state: {e}")
+            # Don't show error for processing state - it's optional
             return None
 
     def clear_processing_state(self, video_session_id):
@@ -354,7 +354,7 @@ class SupabaseManager:
             self.client.table('processing_states').delete().eq('session_id', video_session_id).execute()
             return True
         except Exception as e:
-            st.error(f"Error clearing processing state: {e}")
+            # Don't show error for processing state - it's optional
             return False
 
     def clear_all_data(self):
