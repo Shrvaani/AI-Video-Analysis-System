@@ -1446,6 +1446,12 @@ st.markdown("### 📊 Total Statistics Overview")
 # Calculate total statistics from the same processed videos list
 processed_videos = get_processed_videos()
 
+# Initialize variables to avoid NameError
+total_sessions = 0
+total_detected_sessions = 0
+total_identified_sessions = 0
+session_debug_info = []
+
 if processed_videos:
     total_sessions = len(processed_videos)
     
@@ -1607,7 +1613,7 @@ if processed_videos:
         st.write(f"- Total sessions: {total_sessions}")
         st.write(f"- Detection sessions: {total_detected_sessions}")
         st.write(f"- Identification sessions: {total_identified_sessions}")
-        if total_sessions > 0:
+        if total_sessions > 0 and PANDAS_AVAILABLE:
             st.write(f"- Chart data: {chart_data.to_dict('records')}")
         st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
         st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
@@ -1662,3 +1668,9 @@ else:
         st.metric("Detection Sessions", total_detected_sessions)
     with stat_col3:
         st.metric("Identification Sessions", total_identified_sessions)
+    
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    if uploaded_videos:
+        st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
+    else:
+        st.info("📊 No statistics available yet. Process some videos to see the overview.")
