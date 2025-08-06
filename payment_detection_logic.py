@@ -23,11 +23,13 @@ try:
     class_names = model1.names
 except Exception as e:
     print(f"Warning: Could not load best.pt model: {e}")
+    model1 = None
 
 try:
     model2 = YOLO("card_cash_hand_best.pt")  # Model trained on cash and card
 except Exception as e:
     print(f"Warning: Could not load card_cash_hand_best.pt model: {e}")
+    model2 = None
 
 # Payment detection function
 def detect_payments(st, video_path, video_session_id):

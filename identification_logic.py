@@ -16,7 +16,12 @@ except ImportError:
     supabase_manager = None
 
 # Load YOLOv8 model for real-time detection in identify mode
-model = YOLO("yolov8n.pt")
+model = None
+try:
+    model = YOLO("yolov8n.pt")
+except Exception as e:
+    print(f"Warning: Could not load YOLO model: {e}")
+    model = None
 
 # Helper: Crop head area from bounding box
 def crop_head(frame, box):
@@ -85,6 +90,12 @@ def count_person_sessions(person_id, base_dir):
 def identify_persons(st, base_dir, temp_dir, video_session_dir, video_path, video_session_id):
     st.subheader("Identify Mode")
     st.markdown("Identifying persons based on previously detected data.")
+
+    # Check if model is available
+    if model is None:
+        st.error("❌ YOLO model is not available!")
+        st.info("Please ensure the model file (yolov8n.pt) is present in the application directory.")
+        return
 
     if 'current_video_session' in st.session_state and st.button("Stop Current Video Processing", key=f"stop_button_{video_session_id}"):
         st.session_state.stop_processing = True

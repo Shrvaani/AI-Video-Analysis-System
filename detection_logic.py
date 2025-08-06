@@ -14,8 +14,13 @@ except ImportError:
     SUPABASE_AVAILABLE = False
     supabase_manager = None
 
-# Load YOLOv8 model (head detection model recommended)
-model = YOLO("yolov8n.pt")  # You can replace this with a head detection model like "yolov8n_head.pt"
+# Load YOLOv8 model with error handling
+model = None
+try:
+    model = YOLO("yolov8n.pt")  # You can replace this with a head detection model like "yolov8n_head.pt"
+except Exception as e:
+    print(f"Warning: Could not load YOLO model: {e}")
+    model = None
 
 # Helper: Crop head area from bounding box
 def crop_head(frame, box):
@@ -88,6 +93,12 @@ def get_person_count(person_id, video_session_id, base_faces_dir):
 def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, video_session_id):
     st.subheader(f"Person Detection in Video Session {video_session_id}: {os.path.basename(video_path)}")
     st.markdown("Detecting and tracking persons in the video.")
+
+    # Check if model is available
+    if model is None:
+        st.error("❌ YOLO model is not available!")
+        st.info("Please ensure the model file (yolov8n.pt) is present in the application directory.")
+        return
 
     # Initialize session state variables
     if 'stop_processing' not in st.session_state:
