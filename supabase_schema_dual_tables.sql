@@ -1,9 +1,6 @@
 -- Dual Table Schema for AI Video Analysis System
 -- Stores both original videos and processed videos in separate tables
 
--- Enable Row Level Security (RLS)
-ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret';
-
 -- Original videos table - stores the uploaded videos
 CREATE TABLE IF NOT EXISTS original_videos (
     id SERIAL PRIMARY KEY,
