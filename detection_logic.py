@@ -110,6 +110,10 @@ def detect_persons(st, base_faces_dir, temp_dir, video_session_dir, video_path, 
         current_frame_persons = {}  # {person_id: (x1, y1, x2, y2)} for the current frame
         detection_counter = 0
         
+        # Tracking parameters
+        max_frame_gap = 30  # Maximum frames between detections to consider same person
+        max_distance = 100  # Maximum distance between boxes to consider same person
+        
         video_session_folder = os.path.join(base_faces_dir, "Detected people", video_session_id)
         os.makedirs(video_session_folder, exist_ok=True)
 
