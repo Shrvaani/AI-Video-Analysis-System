@@ -1464,6 +1464,10 @@ if processed_videos:
             session_has_identified = False
             debug_info = {"session_id": session_id, "detected": False, "identified": False, "method": ""}
             
+            # First, try to get workflow mode from the session info
+            workflow_mode = video_info.get('workflow_mode', 'unknown')
+            debug_info["workflow_mode"] = workflow_mode
+            
             # Always check local file system first for more reliable results
             detected_path = os.path.join(base_faces_dir, "Detected people", session_id)
             identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
@@ -1513,13 +1517,25 @@ if processed_videos:
             debug_info["identified"] = session_has_identified
             
             # Categorize the session based on what type of processing was done
-            if session_has_identified:
-                # If session has identified persons, it's an identification session
-                total_identified_sessions += 1
+            # A session can be both detection and identification, so we count both
             if session_has_detected:
-                # If session has detected persons, it's also a detection session
-                # (A session can be both detection and identification)
                 total_detected_sessions += 1
+            if session_has_identified:
+                total_identified_sessions += 1
+            
+            # If we can't determine from file system, use workflow mode as fallback
+            if not session_has_detected and not session_has_identified:
+                if workflow_mode == "detect_identify":
+                    # Assume it was a detection session if workflow was detect_identify
+                    total_detected_sessions += 1
+                    debug_info["categorized_by_workflow"] = "detect_identify"
+                elif workflow_mode == "payment_only":
+                    # Payment sessions don't count as detection or identification
+                    debug_info["categorized_by_workflow"] = "payment_only"
+                else:
+                    # Unknown workflow mode, assume detection
+                    total_detected_sessions += 1
+                    debug_info["categorized_by_workflow"] = "unknown_assumed_detection"
             
             session_debug_info.append(debug_info)
     
@@ -1528,20 +1544,49 @@ if processed_videos:
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
         # Create data for pie chart - show three categories
         if total_sessions > 0:
-            # Create data with three categories
+            # Calculate different types of sessions for better breakdown
+            detection_only_sessions = 0
+            identification_only_sessions = 0
+            mixed_sessions = 0
+            
+            for debug_info in session_debug_info:
+                detected = debug_info.get("detected", False)
+                identified = debug_info.get("identified", False)
+                
+                if detected and identified:
+                    mixed_sessions += 1
+                elif detected:
+                    detection_only_sessions += 1
+                elif identified:
+                    identification_only_sessions += 1
+                else:
+                    # Uncategorized sessions
+                    detection_only_sessions += 1  # Assume detection for uncategorized
+            
+            # Create data with better breakdown
             chart_data = pd.DataFrame({
-                'Category': ['Detection Videos', 'Identification Videos', 'Total Processed Videos'],
-                'Count': [total_detected_sessions, total_identified_sessions, total_sessions]
+                'Category': ['Detection Only', 'Identification Only', 'Mixed Detection & Identification'],
+                'Count': [detection_only_sessions, identification_only_sessions, mixed_sessions]
             })
-        
+            
+            # Filter out categories with 0 count to avoid showing empty slices
+            chart_data_filtered = chart_data[chart_data['Count'] > 0].copy()
+            
+            # If we have no meaningful breakdown, show the original three categories
+            if len(chart_data_filtered) == 0 or (detection_only_sessions == 0 and identification_only_sessions == 0 and mixed_sessions == 0):
+                chart_data_filtered = pd.DataFrame({
+                    'Category': ['Total Processed Videos'],
+                    'Count': [total_sessions]
+                })
+            
             # Create pie chart with count labels
-            fig = px.pie(chart_data, values='Count', names='Category', 
+            fig = px.pie(chart_data_filtered, values='Count', names='Category', 
                         title='Session Processing Breakdown',
                         color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
-        
+            
             # Update the pie chart to show counts instead of percentages
             fig.update_traces(textinfo='label+value', textposition='inside')
-        
+            
             # Display pie chart
             st.plotly_chart(fig, use_container_width=True)
     else:
