@@ -57,6 +57,20 @@ CREATE TABLE IF NOT EXISTS payment_results (
     FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
 );
 
+-- Processing states table - stores video processing state for resuming interrupted processing
+CREATE TABLE IF NOT EXISTS processing_states (
+    id SERIAL PRIMARY KEY,
+    session_id VARCHAR(50) UNIQUE NOT NULL,
+    workflow_mode VARCHAR(50) NOT NULL,
+    video_path VARCHAR(500) NOT NULL,
+    progress FLOAT DEFAULT 0.0,
+    timestamp BIGINT NOT NULL,
+    status VARCHAR(20) DEFAULT 'processing',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    FOREIGN KEY (session_id) REFERENCES sessions(session_id) ON DELETE CASCADE
+);
+
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_sessions_session_id ON sessions(session_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_video_hash ON sessions(video_hash);
@@ -64,6 +78,7 @@ CREATE INDEX IF NOT EXISTS idx_persons_session_id ON persons(session_id);
 CREATE INDEX IF NOT EXISTS idx_face_images_session_person ON face_images(session_id, person_id);
 CREATE INDEX IF NOT EXISTS idx_videos_session_id ON videos(session_id);
 CREATE INDEX IF NOT EXISTS idx_payment_results_session_id ON payment_results(session_id);
+CREATE INDEX IF NOT EXISTS idx_processing_states_session_id ON processing_states(session_id);
 
 -- Enable Row Level Security
 ALTER TABLE sessions ENABLE ROW LEVEL SECURITY;
@@ -71,6 +86,7 @@ ALTER TABLE persons ENABLE ROW LEVEL SECURITY;
 ALTER TABLE face_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payment_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE processing_states ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for public access (you can modify these for authentication later)
 CREATE POLICY "Allow public access to sessions" ON sessions FOR ALL USING (true);
@@ -78,6 +94,7 @@ CREATE POLICY "Allow public access to persons" ON persons FOR ALL USING (true);
 CREATE POLICY "Allow public access to face_images" ON face_images FOR ALL USING (true);
 CREATE POLICY "Allow public access to videos" ON videos FOR ALL USING (true);
 CREATE POLICY "Allow public access to payment_results" ON payment_results FOR ALL USING (true);
+CREATE POLICY "Allow public access to processing_states" ON processing_states FOR ALL USING (true);
 
 -- Create storage bucket for video analysis files
 INSERT INTO storage.buckets (id, name, public) 

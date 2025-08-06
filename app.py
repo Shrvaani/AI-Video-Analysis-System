@@ -4,6 +4,7 @@ import shutil
 import uuid
 import hashlib
 import json
+import time
 
 # Import Supabase manager
 try:
@@ -451,6 +452,16 @@ if 'workflow_mode' not in st.session_state:
 if 'stop_processing' not in st.session_state:
     st.session_state.stop_processing = False
 
+# Check for interrupted processing on app startup
+if 'interrupted_processing_checked' not in st.session_state:
+    interrupted_state = check_for_interrupted_processing()
+    if interrupted_state:
+        st.session_state.pending_processing = interrupted_state
+        st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
+        st.session_state.current_video_session = interrupted_state.get('video_session_id')
+        st.info(f"🔄 **Resuming interrupted processing** for session {interrupted_state.get('video_session_id')}")
+    st.session_state.interrupted_processing_checked = True
+
 # Load or initialize video_hashes from file
 if 'video_hashes' not in st.session_state:
     if os.path.exists(hash_file):
@@ -533,6 +544,89 @@ def get_processed_videos():
                 processed_videos.append(video_info)
     
     return processed_videos
+
+def save_processing_state(video_session_id, workflow_mode, video_path, progress=0):
+    """Save processing state to persistent storage"""
+    processing_state = {
+        'video_session_id': video_session_id,
+        'workflow_mode': workflow_mode,
+        'video_path': video_path,
+        'progress': progress,
+        'timestamp': time.time(),
+        'status': 'processing'
+    }
+    
+    # Save to Supabase if available
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            supabase_manager.save_processing_state(processing_state)
+        except Exception as e:
+            st.warning(f"⚠️ Could not save processing state to cloud: {e}")
+    
+    # Also save locally as backup
+    state_file = os.path.join(temp_dir, f"processing_state_{video_session_id}.json")
+    try:
+        with open(state_file, 'w') as f:
+            json.dump(processing_state, f)
+    except Exception as e:
+        st.warning(f"⚠️ Could not save processing state locally: {e}")
+
+def load_processing_state(video_session_id):
+    """Load processing state from persistent storage"""
+    # Try to load from Supabase first
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            state = supabase_manager.get_processing_state(video_session_id)
+            if state:
+                return state
+        except Exception as e:
+            st.warning(f"⚠️ Could not load processing state from cloud: {e}")
+    
+    # Fallback to local file
+    state_file = os.path.join(temp_dir, f"processing_state_{video_session_id}.json")
+    if os.path.exists(state_file):
+        try:
+            with open(state_file, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            st.warning(f"⚠️ Could not load processing state from local file: {e}")
+    
+    return None
+
+def clear_processing_state(video_session_id):
+    """Clear processing state from persistent storage"""
+    # Clear from Supabase
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        try:
+            supabase_manager.clear_processing_state(video_session_id)
+        except Exception as e:
+            st.warning(f"⚠️ Could not clear processing state from cloud: {e}")
+    
+    # Clear local file
+    state_file = os.path.join(temp_dir, f"processing_state_{video_session_id}.json")
+    if os.path.exists(state_file):
+        try:
+            os.remove(state_file)
+        except Exception as e:
+            st.warning(f"⚠️ Could not clear local processing state: {e}")
+
+def check_for_interrupted_processing():
+    """Check if there's any interrupted processing that can be resumed"""
+    # Check for any processing state files
+    if os.path.exists(temp_dir):
+        state_files = [f for f in os.listdir(temp_dir) if f.startswith('processing_state_') and f.endswith('.json')]
+        for state_file in state_files:
+            try:
+                with open(os.path.join(temp_dir, state_file), 'r') as f:
+                    state = json.load(f)
+                
+                # Check if processing was recent (within last 10 minutes)
+                if time.time() - state.get('timestamp', 0) < 600:  # 10 minutes
+                    return state
+            except Exception as e:
+                st.warning(f"⚠️ Could not read processing state file {state_file}: {e}")
+    
+    return None
 
 # Main Header
 st.markdown("""

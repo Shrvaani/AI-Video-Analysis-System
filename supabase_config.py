@@ -309,6 +309,54 @@ class SupabaseManager:
             st.error(f"Error getting payment results: {e}")
             return []
 
+    def save_processing_state(self, processing_state):
+        """Save processing state to database"""
+        if not self.is_connected():
+            return False
+        
+        try:
+            data = {
+                'session_id': processing_state['video_session_id'],
+                'workflow_mode': processing_state['workflow_mode'],
+                'video_path': processing_state['video_path'],
+                'progress': processing_state['progress'],
+                'timestamp': processing_state['timestamp'],
+                'status': processing_state['status']
+            }
+            
+            # Upsert processing state
+            self.client.table('processing_states').upsert(data).execute()
+            return True
+        except Exception as e:
+            st.error(f"Error saving processing state: {e}")
+            return False
+
+    def get_processing_state(self, video_session_id):
+        """Get processing state from database"""
+        if not self.is_connected():
+            return None
+        
+        try:
+            result = self.client.table('processing_states').select('*').eq('session_id', video_session_id).execute()
+            if result.data:
+                return result.data[0]
+            return None
+        except Exception as e:
+            st.error(f"Error getting processing state: {e}")
+            return None
+
+    def clear_processing_state(self, video_session_id):
+        """Clear processing state from database"""
+        if not self.is_connected():
+            return False
+        
+        try:
+            self.client.table('processing_states').delete().eq('session_id', video_session_id).execute()
+            return True
+        except Exception as e:
+            st.error(f"Error clearing processing state: {e}")
+            return False
+
     def clear_all_data(self):
         """Clear all data from Supabase database and storage"""
         if not self.is_connected():
@@ -321,6 +369,7 @@ class SupabaseManager:
             self.client.table('face_images').delete().neq('id', 0).execute()
             self.client.table('videos').delete().neq('id', 0).execute()
             self.client.table('payment_results').delete().neq('id', 0).execute()
+            self.client.table('processing_states').delete().neq('id', 0).execute()
             
             # Clear storage bucket
             try:
