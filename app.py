@@ -79,7 +79,6 @@ if CV2_AVAILABLE and YOLO_AVAILABLE and NUMPY_AVAILABLE and PANDAS_AVAILABLE and
         from detection_logic import detect_persons
         from identification_logic import identify_persons
         from payment_detection_logic import detect_payments
-        from mixed_detection_logic import mixed_detection_identification
         ALL_MODULES_AVAILABLE = True
     except ImportError as e:
         ALL_MODULES_AVAILABLE = False
@@ -90,7 +89,6 @@ if CV2_AVAILABLE and YOLO_AVAILABLE and NUMPY_AVAILABLE and PANDAS_AVAILABLE and
         - detection_logic.py
         - identification_logic.py
         - payment_detection_logic.py
-        - mixed_detection_logic.py
         """)
 else:
     ALL_MODULES_AVAILABLE = False
@@ -105,10 +103,6 @@ else:
     
     def detect_payments(*args, **kwargs):
         st.error("Payment detection is not available due to missing dependencies.")
-        st.info("Please check the dependency status above and redeploy the application.")
-    
-    def mixed_detection_identification(*args, **kwargs):
-        st.error("Mixed detection is not available due to missing dependencies.")
         st.info("Please check the dependency status above and redeploy the application.")
 
 # Custom CSS for modern styling
@@ -708,7 +702,7 @@ if video_file and not st.session_state.get('workflow_mode'):
     """, unsafe_allow_html=True)
     
     # Workflow Controls
-    col_workflow1, col_workflow2, col_workflow3 = st.columns(3)
+    col_workflow1, col_workflow2 = st.columns(2)
     
     with col_workflow1:
         if st.button("🔍 Detect & Identify", use_container_width=True):
@@ -726,21 +720,6 @@ if video_file and not st.session_state.get('workflow_mode'):
             st.success("✅ Switched to Detect & Identify mode")
 
     with col_workflow2:
-        if st.button("🔄 Mixed Mode", use_container_width=True):
-            st.session_state.workflow_mode = "mixed_mode"
-            st.write(f"🔄 DEBUG: Set workflow_mode to: {st.session_state.workflow_mode}")
-            # Update session in Supabase
-            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected() and 'pending_processing' in st.session_state:
-                try:
-                    supabase_manager.update_session_status(
-                        st.session_state.pending_processing['video_session_id'], 
-                        'mixed_mode'
-                    )
-                except Exception as e:
-                    st.warning(f"⚠️ Failed to update session status: {e}")
-            st.success("✅ Switched to Mixed Mode (Detect New + Identify Existing)")
-
-    with col_workflow3:
         if st.button("💳 Payment Only", use_container_width=True):
             st.session_state.workflow_mode = "payment_only"
             st.write(f"💳 DEBUG: Set workflow_mode to: {st.session_state.workflow_mode}")
@@ -1027,17 +1006,6 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
                 detect_payments(st, temp_video_path, video_session_id)
-            elif st.session_state.workflow_mode == "mixed_mode":
-                st.write(f"🔄 DEBUG: Entering mixed_mode")
-                st.markdown(f"""
-                <div class="session-card">
-                    <h4>🔄 Mixed Detection & Identification in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                mixed_detection_identification(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
             # Decide workflow based on mode and video hash
@@ -1079,17 +1047,6 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
                 detect_payments(st, temp_video_path, video_session_id)
-            elif st.session_state.workflow_mode == "mixed_mode":
-                st.write(f"🔄 DEBUG: Entering mixed_mode (second section)")
-                st.markdown(f"""
-                <div class="session-card">
-                    <h4>🔄 Mixed Detection & Identification in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                mixed_detection_identification(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
 
         # Clear pending processing
         del st.session_state.pending_processing
