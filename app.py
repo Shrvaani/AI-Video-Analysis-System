@@ -1272,9 +1272,9 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
             
-            elif st.session_state.workflow_mode == "payment_only":
-                # Show payment detection metrics
-                col_stats1, col_stats2, col_stats3 = st.columns(3)
+        elif st.session_state.workflow_mode == "payment_only":
+            # Show payment detection metrics
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
             
             with col_stats1:
                 st.metric("Cash Payments", "Processing...")
@@ -1308,8 +1308,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 <p><strong>💰 Cash Payments:</strong> Processing...</p>
                 <p><strong>💳 Card Payments:</strong> Processing...</p>
                 <span class="status-indicator status-active"></span>Processing...
-        </div>
-        """, unsafe_allow_html=True)
+            </div>
+            """, unsafe_allow_html=True)
 else:
     # No active processing - show minimal interface
     pass
@@ -1349,8 +1349,8 @@ processed_videos = get_processed_videos()
 if processed_videos:
     st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
         
-        # Create a 2-column, 10-row grid layout
-        for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
+    # Create a 2-column, 10-row grid layout
+    for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
             col_left, col_right = st.columns(2)
             
             # Left column session
