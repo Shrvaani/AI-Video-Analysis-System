@@ -1263,53 +1263,53 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
             identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
         
-        st.markdown(f"""
-                <div class="session-card">
-                    <h5>📹 Current Session {current_session_id}</h5>
-                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-            
-            elif st.session_state.workflow_mode == "payment_only":
-            # Show payment detection metrics
-            col_stats1, col_stats2, col_stats3 = st.columns(3)
-            
-            with col_stats1:
-                st.metric("Cash Payments", "Processing...")
-            
-            with col_stats2:
-                st.metric("Card Payments", "Processing...")
-            
-            with col_stats3:
-                st.metric("Total Payments", "Processing...")
-            
-            # Summary statistics
-            st.markdown("### 💳 Payment Detection Summary")
-            col_summary1, col_summary2, col_summary3 = st.columns(3)
-            
-            with col_summary1:
-                st.markdown("**Cash Payments:** Processing...")
-            
-            with col_summary2:
-                st.markdown("**Card Payments:** Processing...")
-            
-            with col_summary3:
-                st.markdown("**Total Payments:** Processing...")
-            
-            # Session details for payment mode
-            st.markdown("### 📋 Payment Session Details")
-            current_session_id = st.session_state.get('current_video_session')
-            
             st.markdown(f"""
             <div class="session-card">
-                <h5>💳 Payment Session {current_session_id}</h5>
-                <p><strong>💰 Cash Payments:</strong> Processing...</p>
-                <p><strong>💳 Card Payments:</strong> Processing...</p>
+                <h5>📹 Current Session {current_session_id}</h5>
+                <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                <p><strong>👤 Identified:</strong> {identified_count} persons</p>
                 <span class="status-indicator status-active"></span>Processing...
             </div>
             """, unsafe_allow_html=True)
+            
+    elif st.session_state.workflow_mode == "payment_only":
+        # Show payment detection metrics
+        col_stats1, col_stats2, col_stats3 = st.columns(3)
+        
+        with col_stats1:
+            st.metric("Cash Payments", "Processing...")
+        
+        with col_stats2:
+            st.metric("Card Payments", "Processing...")
+        
+        with col_stats3:
+            st.metric("Total Payments", "Processing...")
+        
+        # Summary statistics
+        st.markdown("### 💳 Payment Detection Summary")
+        col_summary1, col_summary2, col_summary3 = st.columns(3)
+        
+        with col_summary1:
+            st.markdown("**Cash Payments:** Processing...")
+        
+        with col_summary2:
+            st.markdown("**Card Payments:** Processing...")
+        
+        with col_summary3:
+            st.markdown("**Total Payments:** Processing...")
+        
+        # Session details for payment mode
+        st.markdown("### 📋 Payment Session Details")
+        current_session_id = st.session_state.get('current_video_session')
+        
+        st.markdown(f"""
+        <div class="session-card">
+            <h5>💳 Payment Session {current_session_id}</h5>
+            <p><strong>💰 Cash Payments:</strong> Processing...</p>
+            <p><strong>💳 Card Payments:</strong> Processing...</p>
+            <span class="status-indicator status-active"></span>Processing...
+        </div>
+        """, unsafe_allow_html=True)
 else:
     # No active processing - show minimal interface
     pass
@@ -1351,11 +1351,11 @@ if processed_videos:
         
     # Create a 2-column, 10-row grid layout
     for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
-            col_left, col_right = st.columns(2)
-            
-            # Left column session
-            if row < len(processed_videos):
-                video_info = processed_videos[row]
+        col_left, col_right = st.columns(2)
+        
+        # Left column session
+        if row < len(processed_videos):
+            video_info = processed_videos[row]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
@@ -1382,20 +1382,20 @@ if processed_videos:
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
                 
-                with col_left:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
+            with col_left:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
                     <p><strong>📁 File:</strong> {video_name}</p>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
     
-            # Right column session
-            if row + 1 < len(processed_videos):
-                video_info = processed_videos[row + 1]
+        # Right column session
+        if row + 1 < len(processed_videos):
+            video_info = processed_videos[row + 1]
             session_id = video_info.get('session_id', 'Unknown')
             video_name = video_info.get('video_path', 'Unknown').split('/')[-1] if video_info.get('video_path') else 'Unknown'
             
@@ -1422,22 +1422,22 @@ if processed_videos:
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
                 
-                with col_right:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
+            with col_right:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
                     <p><strong>📁 File:</strong> {video_name}</p>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
-    else:
-        uploaded_videos = st.session_state.get('uploaded_videos', [])
-        if uploaded_videos:
-        st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
 else:
-    st.info("📋 No previously processed sessions found.")
+    uploaded_videos = st.session_state.get('uploaded_videos', [])
+    if uploaded_videos:
+        st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
+    else:
+        st.info("📋 No previously processed sessions found.")
 
 # Fourth Half - Total Statistics Overview
 st.markdown("---")  # Add a divider
@@ -1448,8 +1448,6 @@ processed_videos = get_processed_videos()
 
 if processed_videos:
     total_sessions = len(processed_videos)
-    
-
     
     # Count detection and identification sessions
     total_detected_sessions = 0
@@ -1524,6 +1522,7 @@ if processed_videos:
                 total_detected_sessions += 1
             
             session_debug_info.append(debug_info)
+    
     # Always show statistics if there are processed videos
     # Check if pandas and plotly are available for chart creation
     if PANDAS_AVAILABLE and PLOTLY_AVAILABLE:
@@ -1533,94 +1532,88 @@ if processed_videos:
             chart_data = pd.DataFrame({
                 'Category': ['Detection Videos', 'Identification Videos', 'Total Processed Videos'],
                 'Count': [total_detected_sessions, total_identified_sessions, total_sessions]
-        })
+            })
         
-        # Create pie chart with count labels
-        fig = px.pie(chart_data, values='Count', names='Category', 
+            # Create pie chart with count labels
+            fig = px.pie(chart_data, values='Count', names='Category', 
                         title='Session Processing Breakdown',
                         color_discrete_sequence=['#667eea', '#764ba2', '#f093fb'])
         
-        # Update the pie chart to show counts instead of percentages
-        fig.update_traces(textinfo='label+value', textposition='inside')
+            # Update the pie chart to show counts instead of percentages
+            fig.update_traces(textinfo='label+value', textposition='inside')
         
-        # Display pie chart
+            # Display pie chart
             st.plotly_chart(fig, use_container_width=True)
     else:
-            st.info("📊 No processing data available yet. Process some videos to see statistics.")
+        st.info("📊 No processing data available yet. Process some videos to see statistics.")
 
-        # Show summary metrics
-        col1, col2, col3 = st.columns(3)
-with col1:
-            st.metric("Detection Videos", total_detected_sessions)
-        with col2:
-            st.metric("Identification Videos", total_identified_sessions)
-        with col3:
-            st.metric("Total Processed Videos", total_sessions)
+    # Show summary metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Detection Videos", total_detected_sessions)
+    with col2:
+        st.metric("Identification Videos", total_identified_sessions)
+    with col3:
+        st.metric("Total Processed Videos", total_sessions)
+    
+    # Temporary debug info to help troubleshoot
+    if st.checkbox("🔍 Show Data Debug", key="temp_debug"):
+        st.write("**Data Debug Info:**")
+        st.write(f"- Total sessions: {total_sessions}")
+        st.write(f"- Detection sessions: {total_detected_sessions}")
+        st.write(f"- Identification sessions: {total_identified_sessions}")
+        if total_sessions > 0:
+            st.write(f"- Chart data: {chart_data.to_dict('records')}")
+        st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
+        st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
         
-        # Temporary debug info to help troubleshoot
-        if st.checkbox("🔍 Show Data Debug", key="temp_debug"):
-            st.write("**Data Debug Info:**")
-            st.write(f"- Total sessions: {total_sessions}")
-            st.write(f"- Detection sessions: {total_detected_sessions}")
-            st.write(f"- Identification sessions: {total_identified_sessions}")
-            if total_sessions > 0:
-                st.write(f"- Chart data: {chart_data.to_dict('records')}")
-            st.write(f"- PANDAS_AVAILABLE: {PANDAS_AVAILABLE}")
-            st.write(f"- PLOTLY_AVAILABLE: {PLOTLY_AVAILABLE}")
-            
-            st.write("**Session Debug Details:**")
-            for debug_info in session_debug_info:
-                st.write(f"- Session {debug_info['session_id']}:")
-                st.write(f"  - Method: {debug_info['method']}")
-                st.write(f"  - Detected: {debug_info['detected']}")
-                st.write(f"  - Identified: {debug_info['identified']}")
-                if 'persons_count' in debug_info:
-                    st.write(f"  - Persons in DB: {debug_info['persons_count']}")
-                if 'detected_persons_count' in debug_info:
-                    st.write(f"  - Detected persons count: {debug_info['detected_persons_count']}")
-                if 'identified_persons_count' in debug_info:
-                    st.write(f"  - Identified persons count: {debug_info['identified_persons_count']}")
-                if 'detected_path_exists' in debug_info:
-                    st.write(f"  - Detected path exists: {debug_info['detected_path_exists']}")
-                if 'identified_path_exists' in debug_info:
-                    st.write(f"  - Identified path exists: {debug_info['identified_path_exists']}")
-                if 'detected_error' in debug_info:
-                    st.write(f"  - Detected error: {debug_info['detected_error']}")
-                if 'identified_error' in debug_info:
-                    st.write(f"  - Identified error: {debug_info['identified_error']}")
-        
-        # Add debug information for session counting
-        if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
-            st.write("**Session Count Debug Info:**")
-            st.write(f"- Total processed sessions: {total_sessions}")
-            st.write(f"- Detection sessions: {total_detected_sessions}")
-            st.write(f"- Identification sessions: {total_identified_sessions}")
-            st.write("**Individual Session Details:**")
-            for i, video_info in enumerate(processed_videos):
-                session_id = video_info.get('session_id')
-                st.write(f"Session {i+1}: {session_id}")
-                if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
-                    try:
-                        persons_data = supabase_manager.get_persons_by_session(session_id)
-                        detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
-                        identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
-                        st.write(f"  - Detected persons: {detected_count}")
-                        st.write(f"  - Identified persons: {identified_count}")
-                    except Exception as e:
-                        st.write(f"  - Error getting data: {e}")
-    else:
-        # Fallback: display statistics as text when pandas/plotly not available
-        st.markdown("### 📊 Statistics Summary")
-        stat_col1, stat_col2, stat_col3 = st.columns(3)
-        with stat_col1:
-            st.metric("Total Sessions", total_sessions)
-        with stat_col2:
-            st.metric("Detection Sessions", total_detected_sessions)
-        with stat_col3:
-            st.metric("Identification Sessions", total_identified_sessions)
+        st.write("**Session Debug Details:**")
+        for debug_info in session_debug_info:
+            st.write(f"- Session {debug_info['session_id']}:")
+            st.write(f"  - Method: {debug_info['method']}")
+            st.write(f"  - Detected: {debug_info['detected']}")
+            st.write(f"  - Identified: {debug_info['identified']}")
+            if 'persons_count' in debug_info:
+                st.write(f"  - Persons in DB: {debug_info['persons_count']}")
+            if 'detected_persons_count' in debug_info:
+                st.write(f"  - Detected persons count: {debug_info['detected_persons_count']}")
+            if 'identified_persons_count' in debug_info:
+                st.write(f"  - Identified persons count: {debug_info['identified_persons_count']}")
+            if 'detected_path_exists' in debug_info:
+                st.write(f"  - Detected path exists: {debug_info['detected_path_exists']}")
+            if 'identified_path_exists' in debug_info:
+                st.write(f"  - Identified path exists: {debug_info['identified_path_exists']}")
+            if 'detected_error' in debug_info:
+                st.write(f"  - Detected error: {debug_info['detected_error']}")
+            if 'identified_error' in debug_info:
+                st.write(f"  - Identified error: {debug_info['identified_error']}")
+    
+    # Add debug information for session counting
+    if st.checkbox("🔧 Show Session Count Debug", key="debug_session_count"):
+        st.write("**Session Count Debug Info:**")
+        st.write(f"- Total processed sessions: {total_sessions}")
+        st.write(f"- Detection sessions: {total_detected_sessions}")
+        st.write(f"- Identification sessions: {total_identified_sessions}")
+        st.write("**Individual Session Details:**")
+        for i, video_info in enumerate(processed_videos):
+            session_id = video_info.get('session_id')
+            st.write(f"Session {i+1}: {session_id}")
+            if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+                try:
+                    persons_data = supabase_manager.get_persons_by_session(session_id)
+                    detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                    identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                    st.write(f"  - Detected persons: {detected_count}")
+                    st.write(f"  - Identified persons: {identified_count}")
+                except Exception as e:
+                    st.write(f"  - Error getting data: {e}")
 else:
-    uploaded_videos = st.session_state.get('uploaded_videos', [])
-    if uploaded_videos:
-        st.info("📊 Videos uploaded but not yet processed. Start processing to see statistics.")
-    else:
-        st.info("📊 No statistics available yet. Process some videos to see the overview.")
+    # Fallback: display statistics as text when pandas/plotly not available
+    st.markdown("### 📊 Statistics Summary")
+    stat_col1, stat_col2, stat_col3 = st.columns(3)
+    with stat_col1:
+        st.metric("Total Sessions", total_sessions)
+    with stat_col2:
+        st.metric("Detection Sessions", total_detected_sessions)
+    with stat_col3:
+        st.metric("Identification Sessions", total_identified_sessions)
