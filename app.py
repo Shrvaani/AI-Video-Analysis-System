@@ -545,9 +545,17 @@ def check_for_interrupted_processing():
 # Check for interrupted processing on every page load
 interrupted_state = check_for_interrupted_processing()
 if interrupted_state and not st.session_state.get('resume_cancelled', False):
-    st.session_state.pending_processing = interrupted_state
-    st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
-    st.session_state.current_video_session = interrupted_state.get('video_session_id')
+    # Don't resume if payment processing is already complete
+    if st.session_state.get('payment_processing_complete', False):
+        # Clear the completion flag and don't resume
+        del st.session_state.payment_processing_complete
+        # Clear any pending processing state
+        if 'pending_processing' in st.session_state:
+            del st.session_state.pending_processing
+    else:
+        st.session_state.pending_processing = interrupted_state
+        st.session_state.workflow_mode = interrupted_state.get('workflow_mode')
+        st.session_state.current_video_session = interrupted_state.get('video_session_id')
     
     # Show resume options
     st.success(f"🔄 **Automatically resuming interrupted processing** for session {interrupted_state.get('video_session_id')}")

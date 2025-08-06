@@ -274,7 +274,15 @@ def detect_payments(st, video_path, video_session_id):
     except:
         pass  # Ignore if function not available
     
-    # Force UI refresh
-    st.rerun()
+    # Clear any pending processing state to prevent resuming
+    if 'pending_processing' in st.session_state:
+        del st.session_state.pending_processing
+    
+    # Clear workflow mode to prevent automatic resuming
+    if 'workflow_mode' in st.session_state:
+        del st.session_state.workflow_mode
+    
+    # Set a flag to indicate processing is complete
+    st.session_state.payment_processing_complete = True
 
     return {"total_payments": total_payments, "cash_payments": cash_payments, "card_payments": card_payments}
