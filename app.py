@@ -632,6 +632,105 @@ def save_video_hashes():
 def should_force_detection():
     return len(st.session_state.get('video_hashes', {})) == 0
 
+# Function to comprehensively check session data
+def check_session_data():
+    """Comprehensive session data check for debugging"""
+    st.subheader("🔍 Session Data Analysis")
+    
+    # Check current session state
+    st.write("**Current Session State:**")
+    st.write(f"- uploaded_videos count: {len(st.session_state.get('uploaded_videos', []))}")
+    st.write(f"- video_hashes count: {len(st.session_state.get('video_hashes', {}))}")
+    st.write(f"- workflow_mode: {st.session_state.get('workflow_mode', 'None')}")
+    
+    # Check Supabase data
+    if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
+        st.write("**Supabase Data:**")
+        try:
+            all_sessions = supabase_manager.get_all_sessions()
+            st.write(f"- Total sessions in database: {len(all_sessions)}")
+            
+            if all_sessions:
+                st.write("**Session Details:**")
+                for i, session in enumerate(all_sessions):
+                    session_id = session.get('session_id', 'Unknown')
+                    workflow_mode = session.get('workflow_mode', 'unknown')
+                    video_hash = session.get('video_hash', 'unknown')
+                    created_at = session.get('created_at', 'unknown')
+                    
+                    st.write(f"**Session {i+1}: {session_id}**")
+                    st.write(f"  - Workflow Mode: {workflow_mode}")
+                    st.write(f"  - Video Hash: {video_hash}")
+                    st.write(f"  - Created At: {created_at}")
+                    
+                    # Check person data
+                    try:
+                        persons_data = supabase_manager.get_persons_by_session(session_id)
+                        detected_count = len([p for p in persons_data if p.get('detection_type') == 'detected'])
+                        identified_count = len([p for p in persons_data if p.get('detection_type') == 'identified'])
+                        st.write(f"  - Persons Data: {len(persons_data)} total")
+                        st.write(f"  - Detected: {detected_count}")
+                        st.write(f"  - Identified: {identified_count}")
+                    except Exception as e:
+                        st.write(f"  - Error getting persons data: {e}")
+                    
+                    # Check payment data
+                    try:
+                        payment_data = supabase_manager.get_payment_results(session_id)
+                        if payment_data:
+                            st.write(f"  - Payment Data: {payment_data}")
+                        else:
+                            st.write(f"  - Payment Data: None")
+                    except Exception as e:
+                        st.write(f"  - Error getting payment data: {e}")
+                    
+                    st.write("---")
+        except Exception as e:
+            st.error(f"Error accessing Supabase: {e}")
+    else:
+        st.write("**Supabase:** Not available")
+    
+    # Check local file system
+    st.write("**Local File System:**")
+    detected_path = os.path.join(base_faces_dir, "Detected people")
+    identified_path = os.path.join(base_faces_dir, "Identified people")
+    
+    if os.path.exists(detected_path):
+        detected_sessions = [d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]
+        st.write(f"- Detected sessions: {len(detected_sessions)}")
+        for session_id in detected_sessions:
+            session_path = os.path.join(detected_path, session_id)
+            person_count = len([d for d in os.listdir(session_path) if os.path.isdir(os.path.join(session_path, d))])
+            st.write(f"  - Session {session_id}: {person_count} persons")
+    else:
+        st.write("- Detected people directory: Does not exist")
+    
+    if os.path.exists(identified_path):
+        identified_sessions = [d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]
+        st.write(f"- Identified sessions: {len(identified_sessions)}")
+        for session_id in identified_sessions:
+            session_path = os.path.join(identified_path, session_id)
+            person_count = len([d for d in os.listdir(session_path) if os.path.isdir(os.path.join(session_path, d))])
+            st.write(f"  - Session {session_id}: {person_count} persons")
+    else:
+        st.write("- Identified people directory: Does not exist")
+    
+    # Check processed videos
+    st.write("**Processed Videos Analysis:**")
+    processed_videos = get_processed_videos()
+    st.write(f"- Processed videos count: {len(processed_videos)}")
+    
+    if processed_videos:
+        for i, video_info in enumerate(processed_videos):
+            session_id = video_info.get('session_id', 'Unknown')
+            workflow_mode = video_info.get('workflow_mode', 'unknown')
+            video_hash = video_info.get('hash', 'unknown')
+            
+            st.write(f"**Processed Video {i+1}: {session_id}**")
+            st.write(f"  - Workflow Mode: {workflow_mode}")
+            st.write(f"  - Video Hash: {video_hash}")
+            st.write(f"  - Full Info: {video_info}")
+
 # Function to get processed videos
 def get_processed_videos():
     uploaded_videos = st.session_state.get('uploaded_videos', [])
@@ -1357,7 +1456,7 @@ st.markdown("---")  # Add a divider
 st.markdown("### 📋 Previously Processed Sessions")
 
 # Add refresh button for session data
-col_refresh1, col_refresh2 = st.columns([1, 4])
+col_refresh1, col_refresh2, col_refresh3 = st.columns([1, 1, 2])
 with col_refresh1:
     if st.button("🔄 Refresh Session Data", help="Reload session data from cloud storage"):
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
@@ -1418,6 +1517,10 @@ with col_refresh1:
                 st.error(f"❌ Failed to refresh session data: {e}")
         else:
             st.warning("⚠️ Cloud storage not available")
+
+with col_refresh2:
+    if st.button("🔍 Check Session Data", help="Run comprehensive session data analysis"):
+        check_session_data()
 
 # Use the shared function to get processed videos
 processed_videos = get_processed_videos()
