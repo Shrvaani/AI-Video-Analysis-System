@@ -616,28 +616,28 @@ with col1:
         except Exception as e:
             st.error(f"❌ Failed to read or save video file: {e}")
             st.stop()
-            
-            # Verify the file was saved correctly
-            if not os.path.exists(temp_video_path):
-                st.error(f"❌ Failed to save video file to {temp_video_path}")
-                st.stop()
-            
-            # Check file size
-            file_size = os.path.getsize(temp_video_path)
-            if file_size == 0:
-                st.error(f"❌ Video file is empty: {temp_video_path}")
-                st.stop()
-            
-            st.success(f"✅ Video saved successfully: {temp_video_path} ({file_size} bytes)")
-            
-            # Test if video can be opened
-            import cv2
-            test_cap = cv2.VideoCapture(temp_video_path)
-            if not test_cap.isOpened():
-                st.error(f"❌ Cannot open video file: {temp_video_path}")
-                st.error("This might be due to unsupported video format or corrupted file.")
-                st.stop()
-            test_cap.release()
+        
+        # Verify the file was saved correctly
+        if not os.path.exists(temp_video_path):
+            st.error(f"❌ Failed to save video file to {temp_video_path}")
+            st.stop()
+        
+        # Check file size
+        file_size = os.path.getsize(temp_video_path)
+        if file_size == 0:
+            st.error(f"❌ Video file is empty: {temp_video_path}")
+            st.stop()
+        
+        st.success(f"✅ Video saved successfully: {temp_video_path} ({file_size} bytes)")
+        
+        # Test if video can be opened
+        import cv2
+        test_cap = cv2.VideoCapture(temp_video_path)
+        if not test_cap.isOpened():
+            st.error(f"❌ Cannot open video file: {temp_video_path}")
+            st.error("This might be due to unsupported video format or corrupted file.")
+            st.stop()
+        test_cap.release()
         
         # Save to Supabase if available (will be done after session is created)
         video_content_for_supabase = None
@@ -973,44 +973,44 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
             Some dependencies are missing, so video processing may not work properly.
             The app will attempt to run but may show error messages for unavailable features.
             """)
-        # Decide workflow based on mode and video hash
+            # Decide workflow based on mode and video hash
             st.write(f"🔍 DEBUG: Processing with workflow_mode: {st.session_state.workflow_mode}")
-        if st.session_state.workflow_mode == "detect_identify":
+            if st.session_state.workflow_mode == "detect_identify":
                 # Check if we have existing data to identify against
                 has_existing_data = video_hash in st.session_state.video_hashes.values() and len(existing_persons) > 0
                 
                 if has_existing_data:
-                st.markdown(f"""
-                <div class="session-card">
-                    <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-            else:
-                st.markdown(f"""
-                <div class="session-card">
-                    <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
-                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
-                st.session_state.current_video_session = video_session_id
-                detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔄 Identifying persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
+                    st.markdown(f"""
+                    <div class="session-card">
+                        <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
+                        <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.session_state.current_video_session = video_session_id
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
             elif st.session_state.workflow_mode == "payment_only":
                 st.write(f"💳 DEBUG: Entering payment_only mode")
-            st.markdown(f"""
-            <div class="session-card">
+                st.markdown(f"""
+                <div class="session-card">
                     <h4>💳 Payment Detection in Video Session {video_session_id}</h4>
-                <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
-                <span class="status-indicator status-active"></span>Processing...
-            </div>
-            """, unsafe_allow_html=True)
-            st.session_state.current_video_session = video_session_id
+                    <p><strong>File:</strong> {os.path.basename(temp_video_path)}</p>
+                    <span class="status-indicator status-active"></span>Processing...
+                </div>
+                """, unsafe_allow_html=True)
+                st.session_state.current_video_session = video_session_id
                 detect_payments(st, temp_video_path, video_session_id)
         else:
             # All modules are available - process normally
@@ -1029,8 +1029,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     </div>
                     """, unsafe_allow_html=True)
                     st.session_state.current_video_session = video_session_id
-                identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-            else:
+                    identify_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                else:
                     st.markdown(f"""
                     <div class="session-card">
                         <h4>🔍 Detecting persons in Video Session {video_session_id}</h4>
@@ -1039,9 +1039,9 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                     </div>
                     """, unsafe_allow_html=True)
                     st.session_state.current_video_session = video_session_id
-                detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
-                st.session_state.video_hashes[video_session_id] = video_hash
-                save_video_hashes()
+                    detect_persons(st, base_faces_dir, temp_dir, video_session_dir, temp_video_path, video_session_id)
+                    st.session_state.video_hashes[video_session_id] = video_hash
+                    save_video_hashes()
             elif st.session_state.workflow_mode == "payment_only":
                 st.write(f"💳 DEBUG: Entering payment_only mode (second section)")
                 st.markdown(f"""
@@ -1052,7 +1052,7 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                 </div>
                 """, unsafe_allow_html=True)
                 st.session_state.current_video_session = video_session_id
-            detect_payments(st, temp_video_path, video_session_id)
+                detect_payments(st, temp_video_path, video_session_id)
 
         # Clear pending processing
         del st.session_state.pending_processing
@@ -1081,48 +1081,48 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
     if 'current_video_session' in st.session_state and st.session_state.get('workflow_mode'):
         if st.session_state.workflow_mode == "detect_identify":
             # Show person detection/identification metrics
-        col_stats1, col_stats2, col_stats3 = st.columns(3)
-        
-        with col_stats1:
-            st.metric("Total Unique Persons", "Processing...")
-        
-        with col_stats2:
-            st.metric("Persons in Current Frame", "Processing...")
-        
-        with col_stats3:
-            st.metric("Total Detections", "Processing...")
-        
-        # Summary statistics
-        st.markdown("### 📊 Processing Summary")
-        col_summary1, col_summary2, col_summary3 = st.columns(3)
-        
-        with col_summary1:
-            st.markdown("**Unique Persons:** Processing...")
-        
-        with col_summary2:
-            st.markdown("**Current Frame:** Processing...")
-        
-        with col_summary3:
-            st.markdown("**Total Detections:** Processing...")
-        
-        # Session details - only show current session
-        st.markdown("### 📋 Current Session Details")
-        current_session_id = st.session_state.get('current_video_session')
-        if current_session_id:
-            # Count detected persons in current session
-            detected_path = os.path.join(base_faces_dir, "Detected people", current_session_id)
-            identified_path = os.path.join(base_faces_dir, "Identified people", current_session_id)
-            detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
-            identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-        
-        st.markdown(f"""
-                <div class="session-card">
-                    <h5>📹 Current Session {current_session_id}</h5>
-                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                    <span class="status-indicator status-active"></span>Processing...
-                </div>
-                """, unsafe_allow_html=True)
+            col_stats1, col_stats2, col_stats3 = st.columns(3)
+            
+            with col_stats1:
+                st.metric("Total Unique Persons", "Processing...")
+            
+            with col_stats2:
+                st.metric("Persons in Current Frame", "Processing...")
+            
+            with col_stats3:
+                st.metric("Total Detections", "Processing...")
+            
+            # Summary statistics
+            st.markdown("### 📊 Processing Summary")
+            col_summary1, col_summary2, col_summary3 = st.columns(3)
+            
+            with col_summary1:
+                st.markdown("**Unique Persons:** Processing...")
+            
+            with col_summary2:
+                st.markdown("**Current Frame:** Processing...")
+            
+            with col_summary3:
+                st.markdown("**Total Detections:** Processing...")
+            
+            # Session details - only show current session
+            st.markdown("### 📋 Current Session Details")
+            current_session_id = st.session_state.get('current_video_session')
+            if current_session_id:
+                # Count detected persons in current session
+                detected_path = os.path.join(base_faces_dir, "Detected people", current_session_id)
+                identified_path = os.path.join(base_faces_dir, "Identified people", current_session_id)
+                detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
+                identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
+            
+            st.markdown(f"""
+                    <div class="session-card">
+                        <h5>📹 Current Session {current_session_id}</h5>
+                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                        <span class="status-indicator status-active"></span>Processing...
+                    </div>
+                    """, unsafe_allow_html=True)
         
         elif st.session_state.workflow_mode == "payment_only":
             # Show payment detection metrics
@@ -1160,8 +1160,8 @@ if ('current_video_session' in st.session_state and st.session_state.get('workfl
                         <p><strong>💰 Cash Payments:</strong> Processing...</p>
                         <p><strong>💳 Card Payments:</strong> Processing...</p>
                         <span class="status-indicator status-active"></span>Processing...
-        </div>
-        """, unsafe_allow_html=True)
+                    </div>
+                    """, unsafe_allow_html=True)
 else:
     # No active processing - show minimal interface
     pass
@@ -1177,7 +1177,7 @@ with col_refresh1:
         if SUPABASE_AVAILABLE and supabase_manager and supabase_manager.is_connected():
             try:
                 all_sessions = supabase_manager.get_all_sessions()
-    if all_sessions:
+                if all_sessions:
                     uploaded_videos = []
                     for session in all_sessions:
                         uploaded_videos.append({
@@ -1200,12 +1200,12 @@ processed_videos = get_processed_videos()
 
 if processed_videos:
     st.markdown(f"**Total Processed Sessions:** {len(processed_videos)}")
-        
-        # Create a 2-column, 10-row grid layout
+    
+    # Create a 2-column, 10-row grid layout
     for row in range(0, min(len(processed_videos), 20), 2):  # 20 sessions max (10 rows × 2 columns)
-            col_left, col_right = st.columns(2)
-            
-            # Left column session
+        col_left, col_right = st.columns(2)
+        
+        # Left column session
         if row < len(processed_videos):
             video_info = processed_videos[row]
             session_id = video_info.get('session_id', 'Unknown')
@@ -1230,19 +1230,19 @@ if processed_videos:
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
-                with col_left:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
+            
+            with col_left:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
                     <p><strong>📁 File:</strong> {video_name}</p>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
-    
-            # Right column session
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Right column session
         if row + 1 < len(processed_videos):
             video_info = processed_videos[row + 1]
             session_id = video_info.get('session_id', 'Unknown')
@@ -1267,23 +1267,23 @@ if processed_videos:
                 identified_path = os.path.join(base_faces_dir, "Identified people", session_id)
                 detected_count = len([d for d in os.listdir(detected_path) if os.path.isdir(os.path.join(detected_path, d))]) if os.path.exists(detected_path) else 0
                 identified_count = len([d for d in os.listdir(identified_path) if os.path.isdir(os.path.join(identified_path, d))]) if os.path.exists(identified_path) else 0
-                
-                with col_right:
-                    st.markdown(f"""
-                    <div class="session-card">
-                        <h5>📹 Session {session_id}</h5>
+            
+            with col_right:
+                st.markdown(f"""
+                <div class="session-card">
+                    <h5>📹 Session {session_id}</h5>
                     <p><strong>📁 File:</strong> {video_name}</p>
-                        <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
-                        <p><strong>👤 Identified:</strong> {identified_count} persons</p>
-                        <span class="status-indicator status-inactive"></span>Completed
-                    </div>
-                    """, unsafe_allow_html=True)
-    else:
+                    <p><strong>🔍 Detected:</strong> {detected_count} persons</p>
+                    <p><strong>👤 Identified:</strong> {identified_count} persons</p>
+                    <span class="status-indicator status-inactive"></span>Completed
+                </div>
+                """, unsafe_allow_html=True)
+else:
     uploaded_videos = st.session_state.get('uploaded_videos', [])
     if uploaded_videos:
         st.info("📋 Videos uploaded but not yet processed. Start processing to see session data.")
-else:
-    st.info("📋 No previously processed sessions found.")
+    else:
+        st.info("📋 No previously processed sessions found.")
 
 # Fourth Half - Total Statistics Overview
 st.markdown("---")  # Add a divider
@@ -1340,7 +1340,7 @@ if processed_videos:
         # Create data for pie chart - ensure we have valid data
         if total_detected_sessions == 0 and total_identified_sessions == 0:
             # If no specific data, show a simple breakdown
-        chart_data = pd.DataFrame({
+            chart_data = pd.DataFrame({
                 'Category': ['Processed Sessions'],
                 'Count': [total_sessions]
             })
@@ -1353,22 +1353,22 @@ if processed_videos:
         
         # Always show pie chart if we have processed videos
         if total_sessions > 0:
-        # Create pie chart with count labels
-        fig = px.pie(chart_data, values='Count', names='Category', 
+            # Create pie chart with count labels
+            fig = px.pie(chart_data, values='Count', names='Category', 
                         title='Session Processing Breakdown',
                         color_discrete_sequence=['#667eea', '#764ba2'])
-        
-        # Update the pie chart to show counts instead of percentages
-        fig.update_traces(textinfo='label+value', textposition='inside')
-        
-        # Display pie chart
+            
+            # Update the pie chart to show counts instead of percentages
+            fig.update_traces(textinfo='label+value', textposition='inside')
+            
+            # Display pie chart
             st.plotly_chart(fig, use_container_width=True)
-    else:
+        else:
             st.info("📊 No processing data available yet. Process some videos to see statistics.")
-
+        
         # Show summary metrics
         col1, col2, col3 = st.columns(3)
-with col1:
+        with col1:
             st.metric("Total Sessions", total_sessions)
         with col2:
             st.metric("Detection Sessions", total_detected_sessions)
