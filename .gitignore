@@ -75,3 +75,5 @@ object detection.xml
 
 # Ignore unused legacy file
 app1.py
+
+known_faces/
