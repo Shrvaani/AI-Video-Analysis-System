@@ -59,3 +59,16 @@ temp/
 .env.development.local
 .env.test.local
 .env.production.local 
+# Unused/generated assets
+Models/
+Test_Video's/
+packages.txt
+Requirments.txt
+object detection.xml
+
+# Unused/generated assets
+Models/
+Test_Video's/
+packages.txt
+Requirments.txt
+object detection.xml
