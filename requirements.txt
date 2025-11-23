@@ -17,3 +17,6 @@ torchvision
 # other project libs you need
 python-dotenv
 requests
+
+scikit-image
+supabase
