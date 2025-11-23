@@ -1,11 +1,22 @@
+# Streamlit UI + data handling
 streamlit
-opencv-python-headless
-ultralytics
+
+# Let the installer pick compatible versions for your Python runtime
 numpy
 pandas
+opencv-python-headless
 plotly
-Pillow
-scikit-learn
+
+# YOLO / inference - leave unpinned so uv-resolver picks a py3.13-compatible version
+ultralytics
+
+# If you use torch directly, keep it listed but unpinned so a compatible wheel is chosen
+torch
+torchvision
+
+# other project libs you need
+python-dotenv
+requests
+
 scikit-image
 supabase
-python-dotenv 
