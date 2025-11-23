@@ -1,10 +1,11 @@
-streamlit
+streamlit==1.31.0
 opencv-python-headless==4.7.0.72
 ultralytics==8.0.20
-numpy
+numpy==1.23.5
 pandas
 plotly
 Pillow
+requests
 scikit-learn
 scikit-image
 supabase
