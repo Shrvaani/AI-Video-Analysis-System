@@ -46,7 +46,7 @@ temp/
 *.tmp
 *.temp
 
-# Model files (if too large)
+# Model files
 # *.pt
 # *.pth
 
@@ -59,21 +59,15 @@ temp/
 .env.development.local
 .env.test.local
 .env.production.local 
-# Unused/generated assets
-Models/
-Test_Video's/
-packages.txt
-Requirments.txt
-object detection.xml
 
 # Unused/generated assets
 Models/
 Test_Video's/
-packages.txt
 Requirments.txt
 object detection.xml
 
 # Ignore unused legacy file
 app1.py
 
+# Folders we don’t want tracked
 known_faces/
