@@ -1,6 +1,6 @@
 streamlit
-opencv-python-headless
-ultralytics
+opencv-python-headless==4.7.0.72
+ultralytics==8.0.20
 numpy
 pandas
 plotly
@@ -9,3 +9,4 @@ scikit-learn
 scikit-image
 supabase
 python-dotenv 
+
